@@ -11,7 +11,7 @@ DEBUG = env_to_bool("DEBUG")
 IS_PRODUCTION = os.getenv("ENV") == "production"
 
 # if IS_PRODUCTION:
-#     SECURE_HSTS_SECONDS = 300
+#     SECURE_HSTS_SECONDS = 3600
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
@@ -71,18 +71,10 @@ DATABASES = {
 }
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 LANGUAGE_CODE = "en-us"
