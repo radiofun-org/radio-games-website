@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+  <p>Hi {{ user.username }}!</p>
+
+  <p><a href="{% url 'password_change' %}">Password Change</a></p>
+
+  <form action="{% url 'logout' %}" method="post">
+    {% csrf_token %}
+    <button type="submit">Log Out</button>
+  </form>
+{% else %}
+  <div class="container col-xl-10 col-xxl-8 px-4 py-5">
+    <div class="row align-items-center g-lg-5 py-5">
+      <div class="col-lg-7 text-center text-lg-start">
+        <h1 class="display-4 fw-bold lh-1 text-body-emphasis mb-3">Join Radio Games!</h1>
+
+        <p class="col-lg-10 fs-4">Radio Games is a service for matching contacts, much like LoTW or QRZ. In contrast to those services, however, Radio Games is <em>operated as a public good</em> and is <em>completely open source</em>.</p>
+      </div>
+
+      <div class="col-md-10 mx-auto col-lg-5">
+        <form class="p-4 p-md-5 border rounded-3 bg-body-tertiary">
+          <div class="form-floating mb-3">
+            <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com">
+            <label for="floatingInput">Email address</label>
+          </div>
+
+          <div class="form-floating mb-3">
+            <input type="password" class="form-control" id="floatingPassword" placeholder="Password">
+            <label for="floatingPassword">Password</label>
+          </div>
+
+          <!--<div class="checkbox mb-3">-->
+          <!--  <label>-->
+          <!--    <input type="checkbox" value="remember-me"> Remember me-->
+          <!--  </label>-->
+          <!--</div>-->
+
+          <button class="w-100 btn btn-lg btn-primary" type="submit">Sign up</button>
+
+          <hr class="my-4">
+
+          <small class="text-body-secondary">Already have an account? <a href="{% url 'login' %}">Log in!</a></small>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

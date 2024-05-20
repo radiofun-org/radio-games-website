@@ -2,6 +2,8 @@
 #    uv pip compile requirements.in -o requirements.txt
 asgiref==3.8.1
     # via django
+brotli==1.1.0
+    # via whitenoise
 certifi==2024.2.2
     # via requests
 cffi==1.16.0
@@ -64,3 +66,5 @@ urllib3==2.2.1
     # via
     #   django-anymail
     #   requests
+whitenoise==6.6.0
+    # via -r requirements.in
