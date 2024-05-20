@@ -2,13 +2,25 @@ import os
 
 from pathlib import Path
 
+from env_tools import env_to_bool
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+DEBUG = env_to_bool("DEBUG")
+
+IS_PRODUCTION = os.getenv("ENV") == "production"
+
+# if IS_PRODUCTION:
+#     SECURE_HSTS_SECONDS = 300
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-DEBUG = os.getenv("DEBUG") == "True"
+SECURE_SSL_REDIRECT = not IS_PRODUCTION
 
-ALLOWED_HOSTS = []
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "anymail",
