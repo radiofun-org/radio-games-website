@@ -10,18 +10,19 @@ services:
     image: radio-games-web
     ipc: host
     restart: unless-stopped
-    volumes:
-      - .:/app:delegated
     command: ./serve.sh
     container_name: radio-games-web
     healthcheck:
-      test: curl --fail http://localhost:${PORT}/ || exit 1
+      test: curl --fail http://127.0.0.1:${PORT}/ || exit 1
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 0s
     ports:
-      - ${PORT}:${PORT}
+      - 127.0.0.1:${PORT}:${PORT}
+    volumes:
+      - .:/app:delegated
+      - ../fast-matcher/contacts.sqlite:/app/contacts.sqlite:delegated
 
   db:
     command: postgres -c "shared_preload_libraries=pg_stat_statements" -c "pg_stat_statements.track=all" -c "log_connections=true" -c "max_locks_per_transaction=256"
@@ -37,21 +38,17 @@ services:
       retries: 3
       start_period: 0s
     image: postgres:latest
-    ports:
-      - 127.0.0.1:5435:${DB_PORT}
     restart: unless-stopped
     volumes:
       - data:/var/lib/postgresql
 
   redis:
     container_name: radio-games-redis
-    image: redis:6.0.6
-    ports:
-      - "127.0.0.1:6380:6380"
+    image: redis:7.2.5
 
   rabbitmq:
     container_name: radio-games-rabbitmq
-    image: rabbitmq:3.9
+    image: rabbitmq:3.13.2
 
 volumes:
   data:

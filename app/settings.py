@@ -34,16 +34,24 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "django_extensions",
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
+    "api",
     "app",
+    "contacts",
+    "corsheaders",
+    "oauth2_provider",
+    "rest_framework",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "oauth2_provider.middleware.OAuth2TokenMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -71,10 +79,25 @@ WSGI_APPLICATION = "app.wsgi.application"
 
 DATABASES = {
     "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "radio-games",
+        "USER": os.getenv("DB_USERNAME"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST"),
+        "PORT": os.getenv("DB_PORT"),
+    },
+    "contacts": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+        "NAME": BASE_DIR / "contacts.sqlite",
+        "OPTIONS": {
+            # available in Django 5.1
+            # "init_command": "PRAGMA journal_mode=wal;",
+            "timeout": 5,
+        },
+    },
 }
+
+DATABASE_ROUTERS = ["app.routers.MainRouter"]
 
 # TODO_PRODUCTION: use Redis/kv
 CACHES = {
@@ -91,6 +114,24 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTH_USER_MODEL = "app.AuthUser"
+
+AUTHENTICATION_BACKENDS = [
+    "oauth2_provider.backends.OAuth2Backend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+OAUTH2_PROVIDER = {
+    "SCOPES": {
+        "read-contacts": "Read your contacts and matches",
+        "write-contacts": "Upload contacts",
+    }
+}
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "oauth2_provider.contrib.rest_framework.OAuth2Authentication",
+    )
+}
 
 LANGUAGE_CODE = "en-us"
 

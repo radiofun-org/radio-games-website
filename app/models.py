@@ -18,7 +18,7 @@ class CallsignAssociation(models.Model):
 
 class AuthUser(AbstractUser):
 
-    class Meta:
+    class Meta(AbstractUser.Meta):
         # use the same table that Django's built-in user would use; this makes
         # life easier for us
         db_table = "auth_user"

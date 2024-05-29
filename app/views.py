@@ -8,6 +8,22 @@ def index(request):
     return render(request, "app/index.html")
 
 
+def about(request):
+    return render(request, "app/about.html")
+
+
+def faq(request):
+    return render(request, "app/faq.html")
+
+
+def how_it_works(request):
+    return render(request, "app/how-it-works.html")
+
+
+def upload(request):
+    return render(request, "app/upload.html")
+
+
 class SignUpView(CreateView):
     form_class = UserCreationForm
     success_url = reverse_lazy("login")
