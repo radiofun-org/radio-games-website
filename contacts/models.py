@@ -4,6 +4,7 @@ from django.db import models
 class Match(models.Model):
     class Meta:
         db_table = "matches"
+        managed = False
 
     id = models.IntegerField(primary_key=True)
 
