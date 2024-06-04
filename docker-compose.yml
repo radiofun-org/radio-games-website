@@ -4,7 +4,7 @@ services:
       context: .
     depends_on:
       - db
-      - rabbitmq
+      # - rabbitmq
       - redis
     env_file: .env
     image: radio-games-web
@@ -46,9 +46,9 @@ services:
     container_name: radio-games-redis
     image: redis:7.2.5
 
-  rabbitmq:
-    container_name: radio-games-rabbitmq
-    image: rabbitmq:3.13.2
+  # rabbitmq:
+  #   container_name: radio-games-rabbitmq
+  #   image: rabbitmq:3.13.2
 
 volumes:
   data:
