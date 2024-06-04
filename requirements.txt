@@ -45,6 +45,8 @@ env-tools==2.2.0
     # via -r requirements.in
 executing==2.0.1
     # via stack-data
+gunicorn==22.0.0
+    # via -r requirements.in
 idna==3.7
     # via requests
 ipython==8.24.0
@@ -63,6 +65,8 @@ mypy-extensions==1.0.0
     #   mypy
 oauthlib==3.2.2
     # via django-oauth-toolkit
+packaging==24.0
+    # via gunicorn
 parso==0.8.4
     # via jedi
 pexpect==4.9.0
@@ -113,5 +117,5 @@ urllib3==2.2.1
     #   requests
 wcwidth==0.2.13
     # via prompt-toolkit
-whitenoise[brotli]==6.6.0
+whitenoise==6.6.0
     # via -r requirements.in
