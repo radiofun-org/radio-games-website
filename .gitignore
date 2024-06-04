@@ -3,3 +3,4 @@ db.sqlite3
 static-files/
 .ipython/profile_default/
 contacts.sqlite
+.bash_history
