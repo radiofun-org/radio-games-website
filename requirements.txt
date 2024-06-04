@@ -81,7 +81,7 @@ pygments==2.18.0
     # via ipython
 pytz==2024.1
     # via django-oauth-toolkit
-requests==2.31.0
+requests==2.32.2
     # via
     #   django-anymail
     #   django-oauth-toolkit
@@ -113,5 +113,5 @@ urllib3==2.2.1
     #   requests
 wcwidth==0.2.13
     # via prompt-toolkit
-whitenoise==6.6.0
+whitenoise[brotli]==6.6.0
     # via -r requirements.in
