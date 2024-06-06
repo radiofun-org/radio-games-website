@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}Frequently Asked Questions{% endblock %}
+
+{% block content %}
+<dl>
+  <dt>Why do we need another matching service?</dt>
+  <dd>
+    <p>
+      Quite simply, because I think we can improve on what currently exists, in a number of key ways.
+    </p>
+
+    <p>
+      LoTW has high usage but that usage falls off outside of the US due to no localization of the web interface and low localization of the documentation. It's also largely stagnant due to lack of development, and recent communication from the ARRL shows that they view competing award schemes that use LoTW confirmations as competitors and freeriders. First-mover advantage (21 years of active use) and a prestigious award scheme that uses the confirmations (DXCC) has kept the usage sustained.
+    </p>
+
+    <p>QRZ also does contact matching but to my knowledge only its own awards scheme is built on top of them.</p>
+
+    <p>Club Log does contact matching but the goal if its matching is to show contacts that would lead to new confirmed grids, countries, etc. if confirmed, as well as facilitate confirmation payments (primarily for those in rare locations). It does not have its own awards scheme.</p>
+
+    <p>eQSL also has some usage and its own small awards scheme but is widely seen as obsolete technically.</p>
+
+    <p>None of the above options have their source code available and so can not benefit from outside help. LoTW, QRZ, and Club Log do contact matching as a small part of their overall work.</p>
+
+    <p>RGMS is focused on doing one thing well and being extremely cost-efficient to run. The </p>
+  </dd>
+
+  <dt>How can I help?</dt>
+  <dd>
+    <p>If you're a programmer you can access the source comprising this website <a href="https://github.com/radiofun-org/radio-games-website">here</a>. This website is written using Python and Django. The <a href="https://github.com/radiofun-org/fast-adif-matcher">ADIF matcher</a> is written using Golang.</p>
+
+    <p>If you can help with localizing this website to another language we would love to have your support in doing so, please reach out to <a href="mailto:translation@radio.games">translation@radio.games</a>.</p>
+
+    <p>
+      If you want to make a donation to Radiofun, the organization that builds and maintains the Radio Games Matching Service, you can do so using this button:
+
+      <div>
+        <script>
+          var link = document.createElement('link');
+          link.rel="stylesheet"
+          link.href = "https://ribbon-public-bucket.s3.amazonaws.com/donation-embed-v3/ribbon-donation-embed.css";
+          document.head.appendChild(link);
+        </script>
+
+        <div id="app"></div>
+
+        <div class="ribbon-donation-embed-container">
+          <ribbon-donation-embed
+            id="ribbon-donation-embed"
+            form_uuid="chem_epgGzXPz6xHc3sb5"
+            dialog="true"
+          />
+
+          <script type="module" crossorigin src="https://ribbon-public-bucket.s3.amazonaws.com/donation-embed-v3/ribbon-donation-embed.js"></script>
+        </div>
+      </div>
+    </p>
+  </dd>
+</dl>
+{% endblock %}
