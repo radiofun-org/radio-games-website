@@ -22,15 +22,15 @@
           <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
               <li class="nav-item">
-                <a class="nav-link" href="/how-does-it-work/">How does it work?</a>
+                <a class="nav-link" href="{% url 'how-it-works' %}">How does it work?</a>
               </li>
 
               <li class="nav-item">
-                <a class="nav-link" href="/upload/">Upload Logs</a>
+                <a class="nav-link" href="{% url 'upload' %}">Upload Logs</a>
               </li>
 
               <li class="nav-item">
-                <a class="nav-link" href="/api/">API</a>
+                <a class="nav-link" href="{% url 'api-documentation' %}">API</a>
               </li>
             </ul>
           </div>
@@ -50,8 +50,8 @@
 
         <ul class="nav col-md-4 justify-content-end">
           <li class="nav-item"><a href="https://discord.gg/5HhnwkbnUG" class="nav-link px-2 text-body-secondary">Discord</a></li>
-          <li class="nav-item"><a href="/faq/" class="nav-link px-2 text-body-secondary">FAQs</a></li>
-          <li class="nav-item"><a href="/about/" class="nav-link px-2 text-body-secondary">About</a></li>
+          <li class="nav-item"><a href="{% url 'faq' %}" class="nav-link px-2 text-body-secondary">FAQs</a></li>
+          <li class="nav-item"><a href="{% url 'about' %}" class="nav-link px-2 text-body-secondary">About</a></li>
         </ul>
       </footer>
     </div>

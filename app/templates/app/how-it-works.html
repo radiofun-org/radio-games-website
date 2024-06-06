@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}How It Works{% endblock %}
+
+{% block content %}
+<h2>How it works:</h2>
+
+<p>
+  RGMS matches contacts in ADIF format when both parties upload their logs. It uses rules similar to LoTW to perform this matching, requiring the contact time to be within 30 minutes and the same mode or mode group. If the contact band is not specified it will be inferred based on the frequency.
+</p>
+
+<ol>
+  <li>Upload your contacts in ADIF format via the <a href="{% url 'upload' %}">upload page</a> or the API (coming soon).</li>
+
+  <li></li>
+</ol>
+
+<p>
+</p>
+{% endblock %}
