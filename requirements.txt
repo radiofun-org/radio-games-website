@@ -8,7 +8,7 @@ asttokens==2.4.1
     # via stack-data
 brotli==1.1.0
     # via whitenoise
-certifi==2024.2.2
+certifi==2024.7.4
     # via requests
 cffi==1.16.0
     # via cryptography
@@ -117,5 +117,5 @@ urllib3==2.2.1
     #   requests
 wcwidth==0.2.13
     # via prompt-toolkit
-whitenoise==6.6.0
+whitenoise[brotli]==6.6.0
     # via -r requirements.in
