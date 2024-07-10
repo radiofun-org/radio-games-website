@@ -20,7 +20,7 @@ cryptography==42.0.7
     # via jwcrypto
 decorator==5.1.1
     # via ipython
-django==5.0.6
+django==5.0.7
     # via
     #   -r requirements.in
     #   django-anymail
@@ -117,5 +117,5 @@ urllib3==2.2.1
     #   requests
 wcwidth==0.2.13
     # via prompt-toolkit
-whitenoise==6.6.0
+whitenoise[brotli]==6.6.0
     # via -r requirements.in
