@@ -16,7 +16,7 @@ charset-normalizer==3.3.2
     # via requests
 configparser==7.0.0
     # via tini
-cryptography==42.0.7
+cryptography==43.0.1
     # via jwcrypto
 decorator==5.1.1
     # via ipython
@@ -117,5 +117,5 @@ urllib3==2.2.1
     #   requests
 wcwidth==0.2.13
     # via prompt-toolkit
-whitenoise==6.6.0
+whitenoise[brotli]==6.6.0
     # via -r requirements.in
