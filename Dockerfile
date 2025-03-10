@@ -75,4 +75,4 @@ COPY . /app/
 # Mark port 8000 as being exposed (useful for orchestration).
 EXPOSE 8000
 
-CMD ["/bin/uv", "run", "serve.sh"]
+CMD ["/bin/uv", "run", "./serve.sh"]
