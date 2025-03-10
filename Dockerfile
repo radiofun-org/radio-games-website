@@ -65,7 +65,7 @@ RUN apt-get autoremove \
  && apt-get clean --assume-yes \
  && rm -rf /tmp/*
 
-COPY serve.sh /app/
+COPY . /app/
 
 # Mark port 8000 as being exposed (useful for orchestration).
 EXPOSE 8000
