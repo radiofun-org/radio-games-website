@@ -9,7 +9,7 @@ services:
     image: radio-games-web
     ipc: host
     restart: unless-stopped
-    command: ./serve.sh
+    command: uv run ./serve.sh
     container_name: radio-games-web
     healthcheck:
       test: curl --fail http://127.0.0.1:${PORT}/ || exit 1

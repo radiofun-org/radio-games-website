@@ -1,5 +1,8 @@
 FROM python:3.12-slim-bullseye AS base
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 ENV PATH=$PATH:/root/.local/bin \
     DEBIAN_FRONTEND=noninteractive \
     PYTHONFAULTHANDLER=1 \
@@ -7,6 +10,7 @@ ENV PATH=$PATH:/root/.local/bin \
     PYTHONHASHSEED=random \
     PIP_NO_CACHE_DIR=false \
     PIP_DISABLE_PIP_VERSION_CHECK=false \
+    UV_COMPILE_BYTECODE=1 \
     PAGER=cat
 
 # Install system-level dependencies and packages.
@@ -45,7 +49,8 @@ RUN apt-get update \
 # Generate the /etc/ssl/certs/ca-certificates.crt
 RUN update-ca-certificates --fresh --verbose
 
-COPY requirements.txt /app/
+COPY pyproject.toml uv.lock /app/
+COPY infrastructure/uv.toml /root/.config/uv/uv.toml
 
 # Install our application requirements and build constraints.txt file required by plugins.
 RUN apt-get autoremove \
@@ -54,7 +59,7 @@ RUN apt-get autoremove \
     build-essential \
     libffi-dev \
     libpq-dev \
- && pip install -r requirements.txt \
+ && uv sync --frozen \
  && apt-get remove --assume-yes \
     build-essential \
     libffi-dev \
@@ -70,4 +75,4 @@ COPY . /app/
 # Mark port 8000 as being exposed (useful for orchestration).
 EXPOSE 8000
 
-CMD ["/bin/bash", "serve.sh"]
+CMD ["/bin/uv", "run", "serve.sh"]
