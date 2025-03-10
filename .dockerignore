@@ -1,0 +1,7 @@
+.git/
+.gitignore
+.ipython/
+.ruff_cache/
+.venv/
+tmp/
+**/*.pyc

@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bullseye as base
+FROM python:3.12-slim-bullseye AS base
 
 ENV PATH=$PATH:/root/.local/bin \
     DEBIAN_FRONTEND=noninteractive \
