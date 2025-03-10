@@ -2,6 +2,8 @@ import os
 
 from pathlib import Path
 
+import dj_database_url
+
 from env_tools import env_to_bool
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,14 +83,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "app.wsgi.application"
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "radio-games",
-        "USER": os.getenv("DB_USERNAME"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
-    },
+    "default": dj_database_url.config(),
     "contacts": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "contacts.sqlite",

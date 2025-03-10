@@ -3,7 +3,8 @@ name = "radio-games-website"
 version = "1.0.0"
 requires-python = ">=3.12"
 dependencies = [
-	"django>=5.0.6",
+	"dj-database-url>=2.3.0",
+	"django>=5.1.7,<5.2",
 	"django-anymail>=10.3",
 	"django-cors-headers>=4.3.1",
 	"django-extensions>=3.2.3",

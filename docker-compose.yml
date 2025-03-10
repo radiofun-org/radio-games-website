@@ -19,9 +19,10 @@ services:
       start_period: 0s
     ports:
       - 127.0.0.1:${PORT}:${PORT}
-    # volumes:
-    #   - .:/app:delegated
-    #   - ../fast-matcher/contacts.sqlite:/app/contacts.sqlite:delegated
+    volumes:
+      - /app/.venv
+      - .:/app:delegated
+      - ../fast-matcher/contacts.sqlite:/app/contacts.sqlite:delegated
 
   db:
     command: postgres -c "shared_preload_libraries=pg_stat_statements" -c "pg_stat_statements.track=all" -c "log_connections=true" -c "max_locks_per_transaction=256"
@@ -44,3 +45,7 @@ services:
   redis:
     container_name: radio-games-redis
     image: redis:7.2.5
+
+volumes:
+  data:
+    driver: local
