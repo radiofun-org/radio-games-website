@@ -1,10 +1,13 @@
+import httpx
 import redis
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from .forms import LoginForm, LogUploadForm, SignUpForm
 from .models import CallsignAssociation, LogUpload
@@ -78,10 +81,9 @@ def upload(request):
 @login_required
 def profile(request):
     user = request.user
+    callsigns = CallsignAssociation.objects.filter(user=user)
     upload_count = LogUpload.objects.filter(user=user).count()
-    callsign_ids = list(
-        CallsignAssociation.objects.filter(user=user).values_list("id", flat=True)
-    )
+    callsign_ids = list(callsigns.values_list("id", flat=True))
 
     match_count = 0
     if callsign_ids:
@@ -98,4 +100,75 @@ def profile(request):
         "upload_count": upload_count,
         "contact_count": len(callsign_ids),
         "match_count": match_count,
+        "callsigns": callsigns,
     })
+
+
+def fetch_callook(callsign: str) -> dict | None:
+    url = f"https://callook.info/{callsign}/json"
+    try:
+        resp = httpx.get(url, timeout=5.0)
+        resp.raise_for_status()
+        data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+
+    if data.get("status") != "VALID":
+        return None
+
+    result: dict[str, object] = {
+        "name": data.get("name", ""),
+        "country": "United States",
+    }
+    if location := data.get("location"):
+        result["grid_square"] = location.get("gridsquare", "")
+        try:
+            result["latitude"] = float(location["latitude"])
+            result["longitude"] = float(location["longitude"])
+        except (KeyError, ValueError, TypeError):
+            pass
+    return result
+
+
+@login_required
+@require_POST
+def callsign_add(request):
+    callsign = request.POST.get("callsign", "").strip().upper()
+    if not callsign:
+        messages.error(request, "Callsign is required.")
+        return redirect("profile")
+
+    callook_data = fetch_callook(callsign)
+
+    if callook_data:
+        fields = callook_data
+    else:
+        fields = {
+            "name": request.POST.get("name", "").strip(),
+            "country": request.POST.get("country", "").strip(),
+            "grid_square": request.POST.get("grid_square", "").strip(),
+        }
+
+    try:
+        with transaction.atomic():
+            CallsignAssociation.objects.create(
+                callsign=callsign,
+                user=request.user,
+                **fields,
+            )
+        messages.success(request, f"Callsign {callsign} added.")
+    except IntegrityError:
+        messages.error(request, f"Callsign {callsign} is already in your list.")
+
+    return redirect("profile")
+
+
+@login_required
+@require_POST
+def callsign_delete(request, pk):
+    deleted, _ = CallsignAssociation.objects.filter(pk=pk, user=request.user).delete()
+    if deleted:
+        messages.success(request, "Callsign removed.")
+    else:
+        messages.error(request, "Callsign not found.")
+    return redirect("profile")

@@ -14,7 +14,17 @@ class LogUpload(models.Model):
 class CallsignAssociation(models.Model):
     callsign = models.CharField(max_length=16)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    verified = models.BooleanField()
+    verified = models.BooleanField(default=False)
+    name = models.CharField(max_length=100, blank=True, default="")
+    country = models.CharField(max_length=100, blank=True, default="")
+    grid_square = models.CharField(max_length=8, blank=True, default="")
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["callsign", "user"], name="unique_callsign_per_user"),
+        ]
 
 
 class AuthUser(AbstractUser):

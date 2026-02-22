@@ -6,6 +6,12 @@
 <div class="container py-5" style="max-width: 600px">
   <h2 class="mb-4">Profile</h2>
 
+  {% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+  {% endfor %}
+  {% endif %}
+
   <table class="table">
     <tbody>
       <tr>
@@ -32,5 +38,64 @@
   </table>
 
   <a href="{% url 'password_change' %}" class="btn btn-outline-secondary">Change password</a>
+
+  <hr class="my-4">
+
+  <h4 class="mb-3">Callsigns</h4>
+
+  {% if callsigns %}
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>Callsign</th>
+        <th>Name</th>
+        <th>Country</th>
+        <th>Grid</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cs in callsigns %}
+      <tr>
+        <td>{{ cs.callsign }}</td>
+        <td>{{ cs.name }}</td>
+        <td>{{ cs.country }}</td>
+        <td>{{ cs.grid_square }}</td>
+        <td>
+          <form method="post" action="{% url 'callsign-delete' cs.pk %}" onsubmit="return confirm('Remove {{ cs.callsign }}?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted">No callsigns added yet.</p>
+  {% endif %}
+
+  <h5 class="mt-4 mb-3">Add callsign</h5>
+  <form method="post" action="{% url 'callsign-add' %}">
+    {% csrf_token %}
+    <div class="form-floating mb-3">
+      <input type="text" class="form-control" id="callsign" name="callsign" placeholder="Callsign" required>
+      <label for="callsign">Callsign</label>
+    </div>
+    <p class="text-muted small">US callsigns are auto-populated from Callook.info. For non-US calls, fill in the fields below.</p>
+    <div class="form-floating mb-3">
+      <input type="text" class="form-control" id="name" name="name" placeholder="Name">
+      <label for="name">Name (non-US)</label>
+    </div>
+    <div class="form-floating mb-3">
+      <input type="text" class="form-control" id="country" name="country" placeholder="Country">
+      <label for="country">Country (non-US)</label>
+    </div>
+    <div class="form-floating mb-3">
+      <input type="text" class="form-control" id="grid_square" name="grid_square" placeholder="Grid square">
+      <label for="grid_square">Grid square (non-US)</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Add callsign</button>
+  </form>
 </div>
 {% endblock %}

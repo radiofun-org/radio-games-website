@@ -16,6 +16,7 @@ dependencies = [
 	"ipython>=9.10.0",
 	"psycopg[binary]>=3.3.3",
 	"django-altcha>=0.4.0",
+	"httpx>=0.28.0",
 	"redis>=5.0.0",
 	"whitenoise[brotli]>=6.11.0",
 ]
@@ -23,11 +24,16 @@ dependencies = [
 [dependency-groups]
 dev = [
 	"django-upgrade>=1.29.0",
-	"ruff>=0.15.2",
 	"mypy>=1.19.1",
 	"mypy-extensions>=1.1.0",
+	"pytest>=8.0",
+	"pytest-django>=4.9",
+	"ruff>=0.15.2",
 	"typing_extensions>=4.15.0",
 ]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "app.test_settings"
 
 [tool.ruff]
 line-length = 99

@@ -15,5 +15,7 @@ urlpatterns = [
     path("faq/", views.faq, name="faq"),
     path("how-it-works/", views.how_it_works, name="how-it-works"),
     path("profile/", views.profile, name="profile"),
+    path("profile/callsign/add/", views.callsign_add, name="callsign-add"),
+    path("profile/callsign/<int:pk>/delete/", views.callsign_delete, name="callsign-delete"),
     path("upload/", views.upload, name="upload"),
 ]
