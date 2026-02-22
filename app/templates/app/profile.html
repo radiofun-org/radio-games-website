@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 600px">
+  <h2 class="mb-4">Profile</h2>
+
+  <table class="table">
+    <tbody>
+      <tr>
+        <th scope="row">Email</th>
+        <td>{{ user.email }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Member since</th>
+        <td>{{ user.date_joined|date:"N j, Y" }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Uploads</th>
+        <td>{{ upload_count }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Contacts</th>
+        <td>{{ contact_count }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Matches</th>
+        <td>{{ match_count }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <a href="{% url 'password_change' %}" class="btn btn-outline-secondary">Change password</a>
+</div>
+{% endblock %}

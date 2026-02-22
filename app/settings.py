@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "oauth2_provider",
     "rest_framework",
+    "django_altcha",
 ]
 
 MIDDLEWARE = [
@@ -67,7 +68,7 @@ ROOT_URLCONF = "app.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "app" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -96,10 +97,10 @@ DATABASES = {
 
 DATABASE_ROUTERS = ["app.routers.MainRouter"]
 
-# TODO_PRODUCTION: use Redis/kv
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL", "redis://redis:6379"),
     }
 }
 
@@ -138,6 +139,8 @@ STATIC_URL = "static/"
 
 STATIC_ROOT = BASE_DIR / "static-files"
 
+MEDIA_ROOT = BASE_DIR / "uploads"
+
 STORAGES = {
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
@@ -155,3 +158,6 @@ EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
 DEFAULT_FROM_EMAIL = "no-reply@radio.games"
 
 SERVER_EMAIL = "no-reply@radio.games"
+
+ALTCHA_HMAC_KEY = os.getenv("ALTCHA_HMAC_KEY", "")
+ALTCHA_CACHE_ALIAS = "default"

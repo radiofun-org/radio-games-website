@@ -20,7 +20,6 @@ services:
     ports:
       - 127.0.0.1:${PORT}:${PORT}
     volumes:
-      - /app/.venv
       - .:/app:delegated
       - ../fast-matcher/contacts.sqlite:/app/contacts.sqlite:delegated
 
@@ -37,14 +36,14 @@ services:
       timeout: 3s
       retries: 3
       start_period: 0s
-    image: postgres:latest
+    image: postgres:17
     restart: unless-stopped
     volumes:
       - data:/var/lib/postgresql
 
   redis:
     container_name: radio-games-redis
-    image: redis:7.2.5
+    image: redis:8
 
 volumes:
   data:

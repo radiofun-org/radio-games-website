@@ -1,6 +1,8 @@
 .env
 db.sqlite3
 static-files/
+uploads/
 .ipython/profile_default/
 contacts.sqlite
 .bash_history
+gunicorn.ctl

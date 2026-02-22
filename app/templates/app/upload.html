@@ -1,9 +1,62 @@
 {% extends "base.html" %}
 
-{% load i18n %}
-
-{% block title %}Upload{% endblock %}
+{% block title %}Upload Logs{% endblock %}
 
 {% block content %}
-<p>TODO: add upload form</p>
+<div class="container py-5" style="max-width: 600px">
+  <h2 class="mb-4">Upload ADIF Log</h2>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {% if form.errors %}
+      <div class="alert alert-danger">
+        {% for field in form %}
+          {% for error in field.errors %}<p>{{ error }}</p>{% endfor %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label for="id_log_file" class="form-label">ADIF log file (.adi, .adif, .adx)</label>
+      <input type="file" class="form-control{% if form.log_file.errors %} is-invalid{% endif %}" id="id_log_file" name="log_file" accept=".adi,.adif,.adx">
+    </div>
+
+    <button type="submit" class="btn btn-primary">Upload</button>
+  </form>
+
+  {% if recent_uploads %}
+  <h4 class="mt-5 mb-3">Recent uploads</h4>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Uploaded</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for upload in recent_uploads %}
+      <tr>
+        <td>{{ upload.log_file.name|cut:"uploads/" }}</td>
+        <td>{{ upload.upload_time|date:"N j, Y g:i a" }}</td>
+        <td>
+          {% if upload.processed %}
+            <span class="badge bg-success">Processed</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">Pending</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
 {% endblock %}

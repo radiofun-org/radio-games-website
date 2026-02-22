@@ -9,11 +9,11 @@ urlpatterns = [
     path("", views.index, name="index"),
     path("about/", views.about, name="about"),
     path("accounts/", include("django.contrib.auth.urls")),
-    path("accounts/signup/", views.SignUpView.as_view(), name="signup"),
     path("admin/", admin.site.urls),
     path("api/", api_views.documentation, name="api-documentation"),
     path("api/", include("api.urls")),
     path("faq/", views.faq, name="faq"),
     path("how-it-works/", views.how_it_works, name="how-it-works"),
+    path("profile/", views.profile, name="profile"),
     path("upload/", views.upload, name="upload"),
 ]
