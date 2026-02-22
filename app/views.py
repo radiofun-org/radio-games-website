@@ -55,10 +55,11 @@ def how_it_works(request):
 @login_required
 def upload(request):
     if request.method == "POST":
-        form = LogUploadForm(request.POST, request.FILES)
+        form = LogUploadForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             log_upload = LogUpload(
                 log_file=form.cleaned_data["log_file"],
+                callsign=form.cleaned_data["callsign"],
                 user=request.user,
             )
             log_upload.save()
@@ -69,7 +70,7 @@ def upload(request):
             messages.success(request, "Log uploaded successfully! It will be processed shortly.")
             return redirect("upload")
     else:
-        form = LogUploadForm()
+        form = LogUploadForm(user=request.user)
     recent_uploads = LogUpload.objects.filter(user=request.user).order_by("-upload_time")[:10]
     return render(request, "app/upload.html", {"form": form, "recent_uploads": recent_uploads})
 
@@ -87,7 +88,7 @@ def profile(request):
         try:
             from contacts.models import Match
 
-            match_count = Match.objects.using("contacts").filter(
+            match_count = Match.objects.filter(
                 Q(a_call_id__in=callsign_ids) | Q(b_call_id__in=callsign_ids)
             ).count()
         except Exception:

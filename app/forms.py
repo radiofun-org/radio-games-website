@@ -51,7 +51,18 @@ ADIF_EXTENSIONS = (".adi", ".adif", ".adx")
 
 
 class LogUploadForm(forms.Form):
+    callsign = forms.ChoiceField(label="Your callsign")
     log_file = forms.FileField(label="ADIF log file")
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user:
+            from .models import CallsignAssociation
+
+            choices = CallsignAssociation.objects.filter(user=user).values_list(
+                "callsign", "callsign"
+            )
+            self.fields["callsign"].choices = list(choices)
 
     def clean_log_file(self):
         f = self.cleaned_data["log_file"]

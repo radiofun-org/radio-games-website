@@ -85,17 +85,7 @@ WSGI_APPLICATION = "app.wsgi.application"
 
 DATABASES = {
     "default": dj_database_url.config(conn_health_checks=True),
-    "contacts": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "contacts.sqlite",
-        "OPTIONS": {
-            "init_command": "PRAGMA journal_mode=wal;",
-            "timeout": 5,
-        },
-    },
 }
-
-DATABASE_ROUTERS = ["app.routers.MainRouter"]
 
 CACHES = {
     "default": {

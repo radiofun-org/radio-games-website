@@ -24,6 +24,15 @@
     {% endif %}
 
     <div class="mb-3">
+      <label for="id_callsign" class="form-label">Your callsign</label>
+      <select class="form-select{% if form.callsign.errors %} is-invalid{% endif %}" id="id_callsign" name="callsign">
+        {% for value, label in form.callsign.field.choices %}
+          <option value="{{ value }}"{% if form.callsign.value == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
       <label for="id_log_file" class="form-label">ADIF log file (.adi, .adif, .adx)</label>
       <input type="file" class="form-control{% if form.log_file.errors %} is-invalid{% endif %}" id="id_log_file" name="log_file" accept=".adi,.adif,.adx">
     </div>

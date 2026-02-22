@@ -5,6 +5,7 @@ from django.db import models
 
 class LogUpload(models.Model):
     log_file = models.FileField(upload_to="uploads/%Y/%m/")
+    callsign = models.CharField(max_length=16, default="")
     processed = models.BooleanField(default=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     upload_time = models.DateTimeField(auto_now_add=True)
