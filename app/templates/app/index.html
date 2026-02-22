@@ -104,20 +104,14 @@
     const reqNumeric = document.getElementById('req-numeric');
     const reqMatch = document.getElementById('req-match');
 
-    function check(el, pass) {
-      el.classList.toggle('text-success', pass);
-      el.classList.toggle('text-danger', !pass);
-    }
-
     function validate() {
       const v = pw.value;
       reqs.style.display = v ? '' : 'none';
-      check(reqLength, v.length >= 8);
-      check(reqNumeric, v && !/^\d+$/.test(v));
+      reqLength.style.display = v.length >= 8 ? 'none' : '';
+      reqNumeric.style.display = (v && !/^\d+$/.test(v)) ? 'none' : '';
 
       const hasConfirm = pw2.value.length > 0;
-      reqMatch.style.display = hasConfirm ? '' : 'none';
-      if (hasConfirm) check(reqMatch, v === pw2.value);
+      reqMatch.style.display = (hasConfirm && v !== pw2.value) ? '' : 'none';
     }
 
     pw.addEventListener('input', validate);
