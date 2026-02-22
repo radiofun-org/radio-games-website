@@ -23,7 +23,7 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-SESSION_BACKEND = "django.contrib.sessions.backends.cache"
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -83,13 +83,12 @@ TEMPLATES = [
 WSGI_APPLICATION = "app.wsgi.application"
 
 DATABASES = {
-    "default": dj_database_url.config(),
+    "default": dj_database_url.config(conn_health_checks=True),
     "contacts": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "contacts.sqlite",
         "OPTIONS": {
-            # available in Django 5.1
-            # "init_command": "PRAGMA journal_mode=wal;",
+            "init_command": "PRAGMA journal_mode=wal;",
             "timeout": 5,
         },
     },
@@ -145,7 +144,6 @@ STORAGES = {
     },
 }
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 ANYMAIL = {
     "MAILGUN_API_KEY": os.getenv("MAILGUN_API_KEY"),

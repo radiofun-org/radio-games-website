@@ -1,25 +1,34 @@
 [project]
 name = "radio-games-website"
 version = "1.0.0"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
 	"dj-database-url>=2.3.0",
-	"django>=5.1.7,<5.2",
-	"django-anymail>=10.3",
-	"django-cors-headers>=4.3.1",
+	"django>=6.0.2,<6.1",
+	"django-anymail>=12.0",
+	"django-cors-headers>=4.6.0",
 	"django-extensions>=3.2.3",
-	"django-filter>=24.2",
-	"django-oauth-toolkit>=2.4.0",
-	"djangorestframework>=3.15.1",
+	"django-filter>=24.4",
+	"django-oauth-toolkit>=3.0.0",
+	"djangorestframework>=3.16.0",
 	"env-tools>=2.2.0",
-	"gunicorn>=22.0.0",
-	"ipython>=8.11.0",
-	"psycopg2>=2.9.9",
-	"whitenoise[brotli]>=6.6.0",
+	"gunicorn>=23.0.0",
+	"ipython>=8.30.0",
+	"psycopg[binary]>=3.2.0",
+	"whitenoise[brotli]>=6.8.0",
 ]
 
 [dependency-groups]
-dev = ["ruff>=0.4.5", "mypy", "mypy-extensions", "typing_extensions>=4.12.0"]
+dev = [
+	"django-upgrade>=1.29.0",
+	"ruff>=0.9.0",
+	"mypy",
+	"mypy-extensions",
+	"typing_extensions>=4.12.0",
+]
 
 [tool.ruff]
 line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "F", "UP"]

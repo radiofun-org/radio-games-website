@@ -3,4 +3,4 @@ python-preference = "only-system"
 
 [pip]
 python = "/usr/local/bin/python"
-python-version = "3.12"
+python-version = "3.14"
