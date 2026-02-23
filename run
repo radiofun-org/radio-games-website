@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+CMD="$1"
+CMD_ARGS=("${@:2}")
+
+_run () {
+  docker compose run --rm "$@"
+}
+
+case $CMD in
+  test)
+    _run web uv run pytest "${CMD_ARGS[@]}"
+    ;;
+
+  manage)
+    _run web uv run python manage.py "${CMD_ARGS[@]}"
+    ;;
+
+  *)
+    _run web "$@"
+    ;;
+esac

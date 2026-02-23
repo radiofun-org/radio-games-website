@@ -33,11 +33,15 @@
     </div>
 
     <div class="mb-3">
-      <label for="id_log_file" class="form-label">ADIF log file (.adi, .adif, .adx)</label>
-      <input type="file" class="form-control{% if form.log_file.errors %} is-invalid{% endif %}" id="id_log_file" name="log_file" accept=".adi,.adif,.adx">
+      <label class="form-label">ADIF log file (.adi, .adif, .adx)</label>
+      <input type="file" class="d-none" id="id_log_file" name="log_file" accept=".adi,.adif,.adx">
+      <div id="drop-zone" style="border: 2px dashed #adb5bd; border-radius: .375rem; padding: 2rem; text-align: center; cursor: pointer; transition: border-color .15s, background-color .15s">
+        <div id="drop-text" class="text-secondary">Drop an ADIF file here or click to browse</div>
+      </div>
+      <div id="drop-error" class="alert alert-danger mt-2 d-none"></div>
     </div>
 
-    <button type="submit" class="btn btn-primary">Upload</button>
+    <button type="submit" class="btn btn-primary" id="submit-btn">Upload</button>
   </form>
 
   {% if recent_uploads %}
@@ -68,4 +72,75 @@
   </table>
   {% endif %}
 </div>
+
+<script>
+(function() {
+  const dropZone = document.getElementById('drop-zone');
+  const dropText = document.getElementById('drop-text');
+  const dropError = document.getElementById('drop-error');
+  const fileInput = document.getElementById('id_log_file');
+  const callsignSelect = document.getElementById('id_callsign');
+  const submitBtn = document.getElementById('submit-btn');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#0d6efd';
+    dropZone.style.backgroundColor = '#f8f9fa';
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.borderColor = '#adb5bd';
+    dropZone.style.backgroundColor = '';
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#adb5bd';
+    dropZone.style.backgroundColor = '';
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    dropError.classList.add('d-none');
+    submitBtn.disabled = false;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result;
+      const eohIdx = text.search(/<EOH>/i);
+      const header = eohIdx !== -1 ? text.slice(0, eohIdx) : '';
+      const match = header.match(/<STATION_CALLSIGN:\d+>([^<]+)/i);
+
+      if (match) {
+        const callsign = match[1].trim().toUpperCase();
+        const option = Array.from(callsignSelect.options).find(
+          o => o.text.toUpperCase() === callsign
+        );
+        if (option) {
+          callsignSelect.value = option.value;
+          dropText.textContent = file.name + ' — ' + callsign;
+        } else {
+          dropText.textContent = file.name;
+          dropError.innerHTML = 'Callsign <strong>' + callsign +
+            '</strong> is not in your profile. <a href="{% url "profile" %}">Add it &rarr;</a>';
+          dropError.classList.remove('d-none');
+          submitBtn.disabled = true;
+        }
+      } else {
+        dropText.textContent = file.name;
+      }
+    };
+    reader.readAsText(file.slice(0, 4096));
+  }
+})();
+</script>
 {% endblock %}

@@ -41,6 +41,16 @@
 
   <hr class="my-4">
 
+  <h4 class="mb-3">API Key</h4>
+  <p>Use this key in the <code>X-API-Key</code> header to authenticate API requests.</p>
+  <p><code>{{ user.api_key }}</code></p>
+  <form method="post" action="{% url 'api-key-reset' %}" onsubmit="return confirm('Reset your API key? The old key will stop working immediately.')">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-warning btn-sm">Reset API key</button>
+  </form>
+
+  <hr class="my-4">
+
   <h4 class="mb-3">Callsigns</h4>
 
   {% if callsigns %}
@@ -51,6 +61,7 @@
         <th>Name</th>
         <th>Country</th>
         <th>Grid</th>
+        <th>Active dates</th>
         <th></th>
       </tr>
     </thead>
@@ -61,10 +72,45 @@
         <td>{{ cs.name }}</td>
         <td>{{ cs.country }}</td>
         <td>{{ cs.grid_square }}</td>
-        <td>
-          <form method="post" action="{% url 'callsign-delete' cs.pk %}" onsubmit="return confirm('Remove {{ cs.callsign }}?')">
+        <td>{% if cs.start_date or cs.end_date %}{{ cs.start_date|date:"M Y"|default:"" }} – {{ cs.end_date|date:"M Y"|default:"" }}{% endif %}</td>
+        <td class="text-nowrap">
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleEdit({{ cs.pk }})">Edit</button>
+          <form method="post" action="{% url 'callsign-delete' cs.pk %}" class="d-inline" onsubmit="return confirm('Remove {{ cs.callsign }}?')">
             {% csrf_token %}
             <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+          </form>
+        </td>
+      </tr>
+      <tr id="edit-{{ cs.pk }}" class="d-none">
+        <td colspan="6">
+          <form method="post" action="{% url 'callsign-edit' cs.pk %}">
+            {% csrf_token %}
+            <div class="row g-2 mb-2">
+              <div class="col">
+                <label class="form-label small">Name</label>
+                <input type="text" class="form-control form-control-sm" name="name" value="{{ cs.name }}">
+              </div>
+              <div class="col">
+                <label class="form-label small">Country</label>
+                <input type="text" class="form-control form-control-sm" name="country" value="{{ cs.country }}">
+              </div>
+              <div class="col">
+                <label class="form-label small">Grid</label>
+                <input type="text" class="form-control form-control-sm" name="grid_square" value="{{ cs.grid_square }}">
+              </div>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col">
+                <label class="form-label small">Start date</label>
+                <input type="date" class="form-control form-control-sm" name="start_date" value="{{ cs.start_date|date:'Y-m-d' }}">
+              </div>
+              <div class="col">
+                <label class="form-label small">End date</label>
+                <input type="date" class="form-control form-control-sm" name="end_date" value="{{ cs.end_date|date:'Y-m-d' }}">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleEdit({{ cs.pk }})">Cancel</button>
           </form>
         </td>
       </tr>
@@ -82,20 +128,56 @@
       <input type="text" class="form-control" id="callsign" name="callsign" placeholder="Callsign" required>
       <label for="callsign">Callsign</label>
     </div>
-    <p class="text-muted small">US callsigns are auto-populated from Callook.info. For non-US calls, fill in the fields below.</p>
+    <p class="text-muted small">US callsigns are auto-populated from Callook.info. You can edit any field after adding.</p>
     <div class="form-floating mb-3">
       <input type="text" class="form-control" id="name" name="name" placeholder="Name">
-      <label for="name">Name (non-US)</label>
+      <label for="name">Name</label>
     </div>
     <div class="form-floating mb-3">
       <input type="text" class="form-control" id="country" name="country" placeholder="Country">
-      <label for="country">Country (non-US)</label>
+      <label for="country">Country</label>
     </div>
     <div class="form-floating mb-3">
       <input type="text" class="form-control" id="grid_square" name="grid_square" placeholder="Grid square">
-      <label for="grid_square">Grid square (non-US)</label>
+      <label for="grid_square">Grid square</label>
     </div>
+    <p class="text-muted small">Grid square is for display only and is not used for QSO matching.</p>
+    <div class="row mb-3">
+      <div class="col">
+        <div class="form-floating">
+          <input type="date" class="form-control" id="start_date" name="start_date">
+          <label for="start_date">Start date</label>
+        </div>
+      </div>
+      <div class="col">
+        <div class="form-floating">
+          <input type="date" class="form-control" id="end_date" name="end_date">
+          <label for="end_date">End date</label>
+        </div>
+      </div>
+    </div>
+    <p class="text-muted small">Leave dates blank for your primary callsign. Set dates for club stints or previous callsigns.</p>
     <button type="submit" class="btn btn-primary">Add callsign</button>
   </form>
 </div>
+
+<script>
+function toggleEdit(pk) {
+  document.getElementById('edit-' + pk).classList.toggle('d-none');
+}
+
+document.getElementById('callsign').addEventListener('blur', async function() {
+  const callsign = this.value.trim();
+  if (!callsign) return;
+  try {
+    const resp = await fetch('/profile/callsign/lookup/?callsign=' + encodeURIComponent(callsign));
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.name) document.getElementById('name').value = data.name;
+    if (data.country) document.getElementById('country').value = data.country;
+    if (data.grid_square) document.getElementById('grid_square').value = data.grid_square;
+    if (data.effective_date) document.getElementById('start_date').value = data.effective_date;
+  } catch (e) {}
+});
+</script>
 {% endblock %}

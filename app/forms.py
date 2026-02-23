@@ -62,7 +62,7 @@ class LogUploadForm(forms.Form):
             choices = CallsignAssociation.objects.filter(user=user).values_list(
                 "callsign", "callsign"
             )
-            self.fields["callsign"].choices = list(choices)
+            self.fields["callsign"].choices = [("", "Select callsign")] + list(choices)
 
     def clean_log_file(self):
         f = self.cleaned_data["log_file"]

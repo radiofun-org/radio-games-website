@@ -4,11 +4,7 @@ python manage.py collectstatic --no-input
 python manage.py migrate
 
 if [[ $ENV = "production" ]]; then
-  gunicorn \
-    --bind "0.0.0.0:${PORT}" \
-    --workers 4 \
-    --threads 2 \
-    app.wsgi
+  /venv/bin/uvicorn --host 0.0.0.0 --port "${PORT}" --workers 4 app.asgi:application
 else
-  python manage.py runserver "0.0.0.0:${PORT}"
+  uvicorn --host 0.0.0.0 --port "${PORT}" --reload --reload-include "*.py" --reload-include "*.html" app.asgi:application
 fi

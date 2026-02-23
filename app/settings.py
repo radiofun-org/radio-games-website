@@ -42,10 +42,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "api",
     "app",
+    "django.contrib.postgres",
     "contacts",
     "corsheaders",
-    "oauth2_provider",
-    "rest_framework",
     "django_altcha",
 ]
 
@@ -57,7 +56,6 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.locale.LocaleMiddleware",
-    "oauth2_provider.middleware.OAuth2TokenMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -81,16 +79,16 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "app.wsgi.application"
-
 DATABASES = {
     "default": dj_database_url.config(conn_health_checks=True),
 }
 
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": os.getenv("REDIS_URL", "redis://redis:6379"),
+        "LOCATION": REDIS_URL,
     }
 }
 
@@ -102,20 +100,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTH_USER_MODEL = "app.AuthUser"
-
-AUTHENTICATION_BACKENDS = [
-    "oauth2_provider.backends.OAuth2Backend",
-    "django.contrib.auth.backends.ModelBackend",
-]
-
-OAUTH2_PROVIDER = {
-    "SCOPES": {
-        "read-contacts": "Read your contacts and matches",
-        "write-contacts": "Upload contacts",
-    }
-}
-
-REST_FRAMEWORK = {"DEFAULT_AUTHENTICATION_CLASSES": ("oauth2_provider.contrib.rest_framework.OAuth2Authentication",)}
 
 LANGUAGE_CODE = "en-us"
 
@@ -132,6 +116,9 @@ STATIC_ROOT = BASE_DIR / "static-files"
 MEDIA_ROOT = BASE_DIR / "uploads"
 
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import httpx
 import redis
 from django.conf import settings
@@ -6,11 +8,12 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import LoginForm, LogUploadForm, SignUpForm
-from .models import CallsignAssociation, LogUpload
+from .models import CallsignAssociation, LogUpload, generate_api_key
 
 BACKEND = "django.contrib.auth.backends.ModelBackend"
 
@@ -43,6 +46,10 @@ def index(request):
     })
 
 
+def api_docs(request):
+    return render(request, "app/api_docs.html")
+
+
 def about(request):
     return render(request, "app/about.html")
 
@@ -67,7 +74,7 @@ def upload(request):
             )
             log_upload.save()
 
-            r = redis.from_url(settings.CACHES["default"]["LOCATION"])
+            r = redis.from_url(settings.REDIS_URL)
             r.lpush("log_upload_queue", log_upload.id)
 
             messages.success(request, "Log uploaded successfully! It will be processed shortly.")
@@ -104,12 +111,22 @@ def profile(request):
     })
 
 
-def fetch_callook(callsign: str) -> dict | None:
+@login_required
+@require_POST
+def api_key_reset(request):
+    request.user.api_key = generate_api_key()
+    request.user.save(update_fields=["api_key"])
+    messages.success(request, "API key has been reset.")
+    return redirect("profile")
+
+
+async def fetch_callook(callsign: str) -> dict | None:
     url = f"https://callook.info/{callsign}/json"
     try:
-        resp = httpx.get(url, timeout=5.0)
-        resp.raise_for_status()
-        data = resp.json()
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, timeout=5.0)
+            resp.raise_for_status()
+            data = resp.json()
     except (httpx.HTTPError, ValueError):
         return None
 
@@ -127,7 +144,26 @@ def fetch_callook(callsign: str) -> dict | None:
             result["longitude"] = float(location["longitude"])
         except (KeyError, ValueError, TypeError):
             pass
+    if other_info := data.get("otherInfo"):
+        if grant_date := other_info.get("grantDate"):
+            try:
+                result["effective_date"] = datetime.strptime(
+                    grant_date, "%m/%d/%Y"
+                ).strftime("%Y-%m-%d")
+            except ValueError:
+                pass
     return result
+
+
+@login_required
+async def callsign_lookup(request):
+    callsign = request.GET.get("callsign", "").strip().upper()
+    if not callsign:
+        return JsonResponse({}, status=400)
+    data = await fetch_callook(callsign)
+    if data:
+        return JsonResponse(data)
+    return JsonResponse({}, status=404)
 
 
 @login_required
@@ -138,28 +174,43 @@ def callsign_add(request):
         messages.error(request, "Callsign is required.")
         return redirect("profile")
 
-    callook_data = fetch_callook(callsign)
+    fields = {
+        "name": request.POST.get("name", "").strip(),
+        "country": request.POST.get("country", "").strip(),
+        "grid_square": request.POST.get("grid_square", "").strip(),
+    }
 
-    if callook_data:
-        fields = callook_data
-    else:
-        fields = {
-            "name": request.POST.get("name", "").strip(),
-            "country": request.POST.get("country", "").strip(),
-            "grid_square": request.POST.get("grid_square", "").strip(),
-        }
+    if start := request.POST.get("start_date", "").strip():
+        fields["start_date"] = start
+    if end := request.POST.get("end_date", "").strip():
+        fields["end_date"] = end
 
     try:
         with transaction.atomic():
-            CallsignAssociation.objects.create(
-                callsign=callsign,
-                user=request.user,
-                **fields,
-            )
+            CallsignAssociation.objects.create(callsign=callsign, user=request.user, **fields)
         messages.success(request, f"Callsign {callsign} added.")
     except IntegrityError:
         messages.error(request, f"Callsign {callsign} is already in your list.")
 
+    return redirect("profile")
+
+
+@login_required
+@require_POST
+def callsign_edit(request, pk):
+    try:
+        cs = CallsignAssociation.objects.get(pk=pk, user=request.user)
+    except CallsignAssociation.DoesNotExist:
+        messages.error(request, "Callsign not found.")
+        return redirect("profile")
+
+    cs.name = request.POST.get("name", "").strip()
+    cs.country = request.POST.get("country", "").strip()
+    cs.grid_square = request.POST.get("grid_square", "").strip()
+    cs.start_date = request.POST.get("start_date", "").strip() or None
+    cs.end_date = request.POST.get("end_date", "").strip() or None
+    cs.save(update_fields=["name", "country", "grid_square", "start_date", "end_date"])
+    messages.success(request, f"Callsign {cs.callsign} updated.")
     return redirect("profile")
 
 

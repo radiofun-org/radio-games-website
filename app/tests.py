@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from django.test import Client
@@ -11,6 +11,7 @@ CALLOOK_RESULT = {
     "grid_square": "FN31pr",
     "latitude": 41.714707,
     "longitude": -72.728411,
+    "effective_date": "2020-12-08",
 }
 
 
@@ -39,38 +40,33 @@ def test_profile_shows_callsigns(logged_in, user):
     assert b"ARRL" in resp.content
 
 
-@patch("app.views.fetch_callook")
-def test_add_callsign_with_callook(mock_callook, logged_in, user):
-    mock_callook.return_value = CALLOOK_RESULT
-    resp = logged_in.post("/profile/callsign/add/", {"callsign": "W1AW"})
-    assert resp.status_code == 302
-    cs = CallsignAssociation.objects.get(user=user, callsign="W1AW")
-    assert cs.name == "ARRL HQ OPERATORS CLUB"
-    assert cs.country == "United States"
-    assert cs.grid_square == "FN31pr"
-    assert cs.latitude == pytest.approx(41.714707)
-    assert cs.longitude == pytest.approx(-72.728411)
-
-
-@patch("app.views.fetch_callook")
-def test_add_callsign_manual_fallback(mock_callook, logged_in, user):
-    mock_callook.return_value = None
+def test_add_callsign(logged_in, user):
     resp = logged_in.post("/profile/callsign/add/", {
-        "callsign": "VE3ABC",
-        "name": "John",
-        "country": "Canada",
-        "grid_square": "FN03",
+        "callsign": "W1AW",
+        "name": "ARRL HQ",
+        "country": "United States",
+        "grid_square": "FN31pr",
     })
     assert resp.status_code == 302
-    cs = CallsignAssociation.objects.get(user=user, callsign="VE3ABC")
-    assert cs.name == "John"
-    assert cs.country == "Canada"
-    assert cs.grid_square == "FN03"
+    cs = CallsignAssociation.objects.get(user=user, callsign="W1AW")
+    assert cs.name == "ARRL HQ"
+    assert cs.country == "United States"
+    assert cs.grid_square == "FN31pr"
 
 
-@patch("app.views.fetch_callook")
-def test_add_duplicate_callsign(mock_callook, logged_in, user):
-    mock_callook.return_value = None
+def test_add_callsign_with_dates(logged_in, user):
+    resp = logged_in.post("/profile/callsign/add/", {
+        "callsign": "W1AW",
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+    })
+    assert resp.status_code == 302
+    cs = CallsignAssociation.objects.get(user=user, callsign="W1AW")
+    assert str(cs.start_date) == "2024-01-01"
+    assert str(cs.end_date) == "2024-12-31"
+
+
+def test_add_duplicate_callsign(logged_in, user):
     CallsignAssociation.objects.create(callsign="W1AW", user=user)
     resp = logged_in.post("/profile/callsign/add/", {"callsign": "W1AW"})
     assert resp.status_code == 302
@@ -96,8 +92,50 @@ def test_add_callsign_get_not_allowed(logged_in):
     assert resp.status_code == 405
 
 
-@patch("app.views.fetch_callook")
-def test_callsign_uppercased(mock_callook, logged_in, user):
-    mock_callook.return_value = None
+def test_callsign_uppercased(logged_in, user):
     logged_in.post("/profile/callsign/add/", {"callsign": "w1aw"})
     assert CallsignAssociation.objects.filter(user=user, callsign="W1AW").exists()
+
+
+@patch("app.views.fetch_callook", new_callable=AsyncMock)
+def test_callsign_lookup(mock_callook, logged_in):
+    mock_callook.return_value = CALLOOK_RESULT
+    resp = logged_in.get("/profile/callsign/lookup/?callsign=W1AW")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "ARRL HQ OPERATORS CLUB"
+    assert data["country"] == "United States"
+    assert data["grid_square"] == "FN31pr"
+    assert data["effective_date"] == "2020-12-08"
+
+
+@patch("app.views.fetch_callook", new_callable=AsyncMock)
+def test_callsign_lookup_not_found(mock_callook, logged_in):
+    mock_callook.return_value = None
+    resp = logged_in.get("/profile/callsign/lookup/?callsign=INVALID")
+    assert resp.status_code == 404
+
+
+def test_edit_callsign(logged_in, user):
+    cs = CallsignAssociation.objects.create(callsign="W1AW", user=user, name="Old")
+    resp = logged_in.post(f"/profile/callsign/{cs.pk}/edit/", {
+        "name": "New Name",
+        "country": "United States",
+        "grid_square": "FN31",
+        "start_date": "2024-01-01",
+        "end_date": "",
+    })
+    assert resp.status_code == 302
+    cs.refresh_from_db()
+    assert cs.name == "New Name"
+    assert cs.grid_square == "FN31"
+    assert str(cs.start_date) == "2024-01-01"
+    assert cs.end_date is None
+
+
+def test_cannot_edit_other_users_callsign(logged_in, other_user):
+    cs = CallsignAssociation.objects.create(callsign="W1AW", user=other_user, name="Old")
+    resp = logged_in.post(f"/profile/callsign/{cs.pk}/edit/", {"name": "Hacked"})
+    assert resp.status_code == 302
+    cs.refresh_from_db()
+    assert cs.name == "Old"

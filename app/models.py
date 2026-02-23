@@ -1,6 +1,12 @@
+import secrets
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+
+def generate_api_key():
+    return secrets.token_hex(32)
 
 
 class LogUpload(models.Model):
@@ -20,6 +26,8 @@ class CallsignAssociation(models.Model):
     grid_square = models.CharField(max_length=8, blank=True, default="")
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -28,6 +36,7 @@ class CallsignAssociation(models.Model):
 
 
 class AuthUser(AbstractUser):
+    api_key = models.CharField(max_length=64, unique=True, default=generate_api_key)
 
     class Meta(AbstractUser.Meta):
         # use the same table that Django's built-in user would use; this makes
