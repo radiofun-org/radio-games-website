@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Logbook{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+  <h2 class="mb-4">Logbook</h2>
+
+  {% if rows %}
+  <div class="table-responsive">
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Time</th>
+        <th>My Call</th>
+        <th>Callsign</th>
+        <th>Band</th>
+        <th>Mode</th>
+        <th>Grid</th>
+        <th>DXCC</th>
+        <th>CQ</th>
+        <th>ITU</th>
+        <th>Refs</th>
+        <th>Matched</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr{% if row.confirmed %} class="table-success"{% endif %}>
+        <td>{{ row.date|date:"Y-m-d" }}</td>
+        <td>{{ row.time }}</td>
+        <td>{{ row.my_call }}</td>
+        <td>{% if row.callsign_url %}<a href="{{ row.callsign_url }}">{{ row.callsign }}</a>{% else %}{{ row.callsign }}{% endif %}</td>
+        <td>{{ row.band }}</td>
+        <td>{{ row.mode }}</td>
+        <td>{{ row.grid }}</td>
+        <td>{{ row.dxcc }}</td>
+        <td>{{ row.cq_zone|default_if_none:"" }}</td>
+        <td>{{ row.itu_zone|default_if_none:"" }}</td>
+        <td>{{ row.refs }}</td>
+        <td>{% if row.matched_at %}{{ row.matched_at|naturaltime }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <nav>
+    <ul class="pagination">
+      {% if page > 1 %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page|add:"-1" }}">Previous</a>
+        </li>
+      {% endif %}
+      <li class="page-item disabled">
+        <span class="page-link">Page {{ page }}</span>
+      </li>
+      {% if has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page|add:"1" }}">Next</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% else %}
+  <p class="text-secondary">No contacts yet. <a href="{% url 'upload' %}">Upload a log</a> to get started.</p>
+  {% endif %}
+</div>
+{% endblock %}

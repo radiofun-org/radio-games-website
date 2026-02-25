@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ callsign }}{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 600px">
+  <h2 class="mb-4">{{ callsign }}</h2>
+
+  {% if found %}
+  <table class="table">
+    <tr><th>Name</th><td>{{ assoc.name }}</td></tr>
+    <tr><th>Country</th><td>{{ assoc.country }}</td></tr>
+    {% if assoc.grid_square %}<tr><th>Grid</th><td>{{ assoc.grid_square }}</td></tr>{% endif %}
+    <tr><th>Contacts</th><td>{{ contact_count }}</td></tr>
+    <tr><th>Confirmed</th><td>{{ match_count }}</td></tr>
+    <tr><th>Member since</th><td>{{ assoc.user.date_joined|date:"N j, Y" }}</td></tr>
+  </table>
+  {% else %}
+  <p class="text-secondary">This callsign is not registered on the site.</p>
+  {% endif %}
+</div>
+{% endblock %}

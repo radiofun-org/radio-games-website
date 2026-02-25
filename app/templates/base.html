@@ -26,6 +26,10 @@
               </li>
 
               <li class="nav-item">
+                <a class="nav-link" href="{% url 'logbook' %}">Logbook</a>
+              </li>
+
+              <li class="nav-item">
                 <a class="nav-link" href="{% url 'upload' %}">Upload Logs</a>
               </li>
 
@@ -50,12 +54,6 @@
           </div>
         </div>
       </nav>
-
-      <div class="mt-2">
-        <div class="alert alert-info" role="alert">
-          The Radio Games Matching Service is undergoing initial testing. When it launches fully you may need to upload your logs again.
-        </div>
-      </div>
 
       {% block content %}{% endblock %}
 

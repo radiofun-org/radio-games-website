@@ -57,15 +57,19 @@ def test_matches_empty(api_client):
 
 
 def test_matches_returns_data(api_client):
-    from contacts.models import Match
+    from contacts.models import Callsign, Match
 
     client, api_key = api_client
     user = AuthUser.objects.get(username="testuser")
-    cs_a = CallsignAssociation.objects.create(callsign="W1AW", user=user, name="ARRL")
+    CallsignAssociation.objects.create(callsign="W1AW", user=user, name="ARRL")
     other = AuthUser.objects.create_user(username="other", password="testpass123")
-    cs_b = CallsignAssociation.objects.create(callsign="VE3ABC", user=other, name="John")
+    CallsignAssociation.objects.create(callsign="VE3ABC", user=other, name="John")
 
-    Match.objects.create(matched_at=1700000000, a_id=1, b_id=2, a_call_id=cs_a.id, b_call_id=cs_b.id)
+    # Create matcher-side callsign records (normally written by the Go matcher)
+    mc_a = Callsign.objects.create(callsign="W1AW")
+    mc_b = Callsign.objects.create(callsign="VE3ABC")
+
+    Match.objects.create(matched_at=1700000000, a_id=1, b_id=2, a_call_id=mc_a.id, b_call_id=mc_b.id)
 
     resp = client.get("/api/matches/", HTTP_X_API_KEY=api_key)
     assert resp.status_code == 200

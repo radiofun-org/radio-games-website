@@ -8,7 +8,7 @@ from ninja.files import UploadedFile
 from ninja.security import APIKeyHeader
 
 from app.models import AuthUser, CallsignAssociation, LogUpload
-from contacts.models import Contact, Match
+from contacts.models import Callsign, Contact, Match
 
 
 class ApiKeyAuth(APIKeyHeader):
@@ -52,19 +52,23 @@ class MatchOut(Schema):
 def callsign_lookup(request, call: str):
     """Look up a callsign's profile, including signup date and activity counts.
     Returns 404 if the callsign is not registered."""
-    cs = CallsignAssociation.objects.select_related("user").filter(callsign=call.upper()).first()
-    if not cs:
+    assoc = CallsignAssociation.objects.select_related("user").filter(callsign=call.upper()).first()
+    if not assoc:
         return api.create_response(request, {"detail": "Not found"}, status=404)
+    matcher_cs = Callsign.objects.filter(callsign=assoc.callsign).first()
+    matcher_id = matcher_cs.id if matcher_cs else -1
     return CallsignOut(
-        callsign=cs.callsign,
-        name=cs.name,
-        country=cs.country,
-        grid_square=cs.grid_square,
-        latitude=cs.latitude,
-        longitude=cs.longitude,
-        signed_up=cs.user.date_joined,
-        contact_count=Contact.objects.filter(Q(from_id=cs.id) | Q(to_id=cs.id)).count(),
-        match_count=Match.objects.filter(Q(a_call_id=cs.id) | Q(b_call_id=cs.id)).count(),
+        callsign=assoc.callsign,
+        name=assoc.name,
+        country=assoc.country,
+        grid_square=assoc.grid_square,
+        latitude=assoc.latitude,
+        longitude=assoc.longitude,
+        signed_up=assoc.user.date_joined,
+        contact_count=Contact.objects.filter(Q(from_id=matcher_id) | Q(to_id=matcher_id)).count(),
+        match_count=Match.objects.filter(
+            Q(a_call_id=matcher_id) | Q(b_call_id=matcher_id)
+        ).count(),
     )
 
 
@@ -87,16 +91,23 @@ def match_list(request, limit: int = 50, offset: int = 0):
     """List confirmed matches for your callsigns, newest first.
     A match means both parties uploaded logs containing the same QSO."""
     user = request.auth
-    call_ids = list(CallsignAssociation.objects.filter(user=user).values_list("id", flat=True))
-    if not call_ids:
+    user_callsigns = list(
+        CallsignAssociation.objects.filter(user=user).values_list("callsign", flat=True)
+    )
+    if not user_callsigns:
+        return []
+    matcher_ids = list(
+        Callsign.objects.filter(callsign__in=user_callsigns).values_list("id", flat=True)
+    )
+    if not matcher_ids:
         return []
     matches = list(
-        Match.objects.filter(Q(a_call_id__in=call_ids) | Q(b_call_id__in=call_ids)).order_by(
-            "-matched_at"
-        )[offset : offset + limit]
+        Match.objects.filter(
+            Q(a_call_id__in=matcher_ids) | Q(b_call_id__in=matcher_ids)
+        ).order_by("-matched_at")[offset : offset + limit]
     )
     all_ids = {m.a_call_id for m in matches} | {m.b_call_id for m in matches}
-    cs_map = dict(CallsignAssociation.objects.filter(id__in=all_ids).values_list("id", "callsign"))
+    cs_map = dict(Callsign.objects.filter(id__in=all_ids).values_list("id", "callsign"))
     return [
         MatchOut(
             id=m.id,

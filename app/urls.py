@@ -20,5 +20,7 @@ urlpatterns = [
     path("profile/callsign/lookup/", views.callsign_lookup, name="callsign-lookup"),
     path("profile/callsign/<int:pk>/edit/", views.callsign_edit, name="callsign-edit"),
     path("profile/callsign/<int:pk>/delete/", views.callsign_delete, name="callsign-delete"),
+    path("call/<str:callsign>/", views.public_callsign, name="public-callsign"),
+    path("logbook/", views.logbook, name="logbook"),
     path("upload/", views.upload, name="upload"),
 ]

@@ -7,7 +7,7 @@ Open-source amateur radio QSO matching service (like LoTW/Club Log but fully ope
 - **Django 6 / Python 3.14** running under **uvicorn** (ASGI)
 - **PostgreSQL 18** for all data, **Redis 8** for cache + session store + upload queue
 - **Django Ninja** for the REST API (`/api/`)
-- **Go-based fast-matcher** (separate repo at `../fast-matcher`) consumes uploads from Redis, writes to `contacts` and `matches` tables directly
+- **Go-based fast-matcher** (separate repo at `../fast-matcher`) consumes uploads from Redis, writes to `matcher_*` tables directly
 - Frontend is server-rendered Django templates + Bootstrap 5 CDN + vanilla JS
 
 ## Docker Compose services
@@ -20,19 +20,22 @@ Open-source amateur radio QSO matching service (like LoTW/Club Log but fully ope
 |------|---------|
 | `app` | Core: auth, callsign management, file upload, profile, pages |
 | `api` | Django Ninja REST API (callsign lookup, upload, matches) |
-| `contacts` | Models for `Contact` and `Match` — written by the Go matcher, read-only from Django |
+| `contacts` | Models for `Callsign`, `AdifMetadata`, `Contact`, and `Match` — written by the Go matcher, read-only from Django. All use `matcher_*` table names. |
 
 ## Key models
 
 - **`AuthUser`** — extends `AbstractUser`, adds `api_key` (64-char hex). Uses `db_table = "auth_user"`.
 - **`CallsignAssociation`** — links callsigns to users with metadata (name, country, grid, lat/lon, date range). Unique on `(callsign, user)`.
 - **`LogUpload`** — uploaded ADIF file + callsign + processed flag.
-- **`Contact`** / **`Match`** — owned by the Go matcher. `Contact` fields are integer-encoded ADIF data. `Match` pairs two contact IDs. Both use `BigIntegerField` for IDs, not Django ForeignKeys.
+- **`Callsign`** — maps callsign strings to integer IDs (`matcher_callsign`). Written by the Go matcher, used by Django to decode `from_id`/`to_id` on contacts.
+- **`AdifMetadata`** — ADIF file metadata (hash, version, program) (`matcher_adif_metadata`).
+- **`Contact`** / **`Match`** — owned by the Go matcher (`matcher_contact`, `matcher_match`). `Contact` fields are integer-encoded ADIF data; `contacts/decode.py` has the reverse maps. `Match` pairs two contact IDs. Both use `BigIntegerField` for IDs, not Django ForeignKeys.
 
 ## URL structure
 
 - `/` — landing page (login + signup in one form, toggled by `form_type`)
 - `/profile/` — dashboard, callsign CRUD, API key management
+- `/logbook/` — user's contacts with confirmed/unconfirmed status, paginated
 - `/upload/` — ADIF file upload with drag-drop and header parsing
 - `/api/` — Ninja API root; `/api/docs` — Swagger UI
 - `/accounts/` — Django auth (login, logout, password change/reset)
@@ -80,6 +83,7 @@ pytest + pytest-django. Test settings (`app/test_settings.py`) swap Redis cache 
 ## Conventions
 
 - Username field is always the user's email, normalized to lowercase
-- `contacts` models use integer-encoded fields (band, mode, callsign IDs) — the Go matcher handles encoding/decoding
+- `contacts` models use integer-encoded fields (band, mode, callsign IDs) — the Go matcher encodes, `contacts/decode.py` decodes
+- `Match.a_call_id`/`b_call_id` reference `Callsign.id` (NOT `CallsignAssociation.id`) — resolve via callsign string
 - Uploads go to `uploads/` (mounted volume shared with matcher container)
 - Production uses `/venv/bin/uvicorn` directly to avoid uv memory overhead

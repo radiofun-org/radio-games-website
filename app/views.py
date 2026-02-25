@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 import redis
@@ -11,6 +11,16 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
+
+from contacts.decode import (
+    decode_band,
+    decode_date,
+    decode_dxcc,
+    decode_grid,
+    decode_mode,
+    decode_time,
+)
+from contacts.models import Callsign, Contact, Match
 
 from .forms import LoginForm, LogUploadForm, SignUpForm
 from .models import CallsignAssociation, LogUpload, generate_api_key
@@ -90,22 +100,22 @@ def profile(request):
     user = request.user
     callsigns = CallsignAssociation.objects.filter(user=user)
     upload_count = LogUpload.objects.filter(user=user).count()
-    callsign_ids = list(callsigns.values_list("id", flat=True))
+    user_callsign_strs = list(callsigns.values_list("callsign", flat=True))
 
-    match_count = 0
-    if callsign_ids:
-        try:
-            from contacts.models import Match
-
-            match_count = Match.objects.filter(
-                Q(a_call_id__in=callsign_ids) | Q(b_call_id__in=callsign_ids)
-            ).count()
-        except Exception:
-            pass
+    matcher_ids = list(
+        Callsign.objects.filter(callsign__in=user_callsign_strs).values_list("id", flat=True)
+    )
+    match_count = (
+        Match.objects.filter(
+            Q(a_call_id__in=matcher_ids) | Q(b_call_id__in=matcher_ids)
+        ).count()
+        if matcher_ids
+        else 0
+    )
 
     return render(request, "app/profile.html", {
         "upload_count": upload_count,
-        "contact_count": len(callsign_ids),
+        "contact_count": len(user_callsign_strs),
         "match_count": match_count,
         "callsigns": callsigns,
     })
@@ -118,6 +128,151 @@ def api_key_reset(request):
     request.user.save(update_fields=["api_key"])
     messages.success(request, "API key has been reset.")
     return redirect("profile")
+
+
+def public_callsign(request, callsign: str):
+    callsign = callsign.upper()
+    assoc = CallsignAssociation.objects.select_related("user").filter(callsign=callsign).first()
+    if not assoc:
+        return render(request, "app/public_callsign.html", {"callsign": callsign, "found": False})
+
+    matcher_cs = Callsign.objects.filter(callsign=callsign).first()
+    matcher_id = matcher_cs.id if matcher_cs else -1
+    contact_count = Contact.objects.filter(
+        Q(from_id=matcher_id) | Q(to_id=matcher_id)
+    ).count()
+    match_count = Match.objects.filter(
+        Q(a_call_id=matcher_id) | Q(b_call_id=matcher_id)
+    ).count()
+
+    return render(request, "app/public_callsign.html", {
+        "callsign": callsign,
+        "found": True,
+        "assoc": assoc,
+        "contact_count": contact_count,
+        "match_count": match_count,
+    })
+
+
+LOGBOOK_PAGE_SIZE = 100
+
+
+@login_required
+def logbook(request):
+    user = request.user
+    user_callsigns = list(
+        CallsignAssociation.objects.filter(user=user).values_list("callsign", flat=True)
+    )
+    if not user_callsigns:
+        return render(request, "app/logbook.html", {"rows": [], "page": 1, "has_next": False})
+
+    matcher_ids = list(
+        Callsign.objects.filter(callsign__in=user_callsigns).values_list("id", flat=True)
+    )
+    if not matcher_ids:
+        return render(request, "app/logbook.html", {"rows": [], "page": 1, "has_next": False})
+
+    page = max(1, int(request.GET.get("page", 1)))
+    offset = (page - 1) * LOGBOOK_PAGE_SIZE
+
+    contacts = list(
+        Contact.objects.filter(from_id__in=matcher_ids)
+        .order_by("-date", "-time")[offset : offset + LOGBOOK_PAGE_SIZE + 1]
+    )
+    has_next = len(contacts) > LOGBOOK_PAGE_SIZE
+    contacts = contacts[:LOGBOOK_PAGE_SIZE]
+
+    # Resolve callsign IDs → strings (both from and to)
+    all_cs_ids = {c.to_id for c in contacts} | {c.from_id for c in contacts}
+    callsign_map = dict(Callsign.objects.filter(id__in=all_cs_ids).values_list("id", "callsign"))
+
+    # Find matches and the other side's contact for sig/ref data
+    contact_ids = {c.id for c in contacts}
+    match_rows = list(
+        Match.objects.filter(
+            Q(a_id__in=contact_ids) | Q(b_id__in=contact_ids)
+        ).values_list("a_id", "b_id", "matched_at")
+    )
+
+    matched_at_map: dict[int, int] = {}
+    other_contact_ids: set[int] = set()
+    # Map my contact ID → other contact ID
+    my_to_other: dict[int, int] = {}
+    for a_id, b_id, matched_at in match_rows:
+        if a_id in contact_ids:
+            matched_at_map[a_id] = matched_at
+            my_to_other[a_id] = b_id
+            other_contact_ids.add(b_id)
+        if b_id in contact_ids:
+            matched_at_map[b_id] = matched_at
+            my_to_other[b_id] = a_id
+            other_contact_ids.add(a_id)
+
+    # Fetch the other side's contacts for sig/ref fields
+    other_contacts_map: dict[int, Contact] = {}
+    if other_contact_ids:
+        other_contacts_map = {
+            c.id: c
+            for c in Contact.objects.filter(id__in=other_contact_ids).only(
+                "id", "my_pota", "my_sota", "my_wwff", "my_iota", "my_sig", "my_sig_info"
+            )
+        }
+
+    # Build callsign → profile URL map (resolve via CallsignAssociation)
+    to_callsigns = {callsign_map.get(c.to_id) for c in contacts} - {None, "?"}
+    profile_urls: dict[str, str] = {}
+    if to_callsigns:
+        # Find associations for these callsigns (any user)
+        assoc_qs = CallsignAssociation.objects.filter(
+            callsign__in=to_callsigns
+        ).values_list("callsign", "user_id")
+        for call, user_id in assoc_qs:
+            # TODO: filter by date range once public profiles exist
+            profile_urls[call] = f"/call/{call}/"
+
+    rows = []
+    for c in contacts:
+        ts = matched_at_map.get(c.id)
+        other_id = my_to_other.get(c.id)
+        other = other_contacts_map.get(other_id) if other_id else None
+
+        # Build combined sig/ref from the other station's contact
+        refs = []
+        if other:
+            if other.my_pota:
+                refs.extend(f"POTA {p}" for p in other.my_pota)
+            if other.my_sota:
+                refs.append(f"SOTA {other.my_sota}")
+            if other.my_wwff:
+                refs.append(f"WWFF {other.my_wwff}")
+            if other.my_iota:
+                refs.append(f"IOTA {other.my_iota}")
+            if other.my_sig and other.my_sig_info:
+                refs.append(f"{other.my_sig} {other.my_sig_info}")
+
+        call_str = callsign_map.get(c.to_id, "?")
+        rows.append({
+            "date": decode_date(c.date),
+            "time": decode_time(c.time),
+            "my_call": callsign_map.get(c.from_id, "?"),
+            "callsign": call_str,
+            "callsign_url": profile_urls.get(call_str),
+            "band": decode_band(c.band),
+            "mode": decode_mode(c.mode, c.sub_mode),
+            "grid": decode_grid(c.grid, c.grid_size),
+            "dxcc": decode_dxcc(c.dxcc),
+            "cq_zone": c.zone_cq or None,
+            "itu_zone": c.zone_itu or None,
+            "refs": ", ".join(refs),
+            "confirmed": ts is not None,
+            "matched_at": datetime.fromtimestamp(ts, tz=timezone.utc) if ts else None,
+        })
+
+    return render(request, "app/logbook.html", {
+        "rows": rows,
+        "page": page,
+        "has_next": has_next,
+    })
 
 
 async def fetch_callook(callsign: str) -> dict | None:

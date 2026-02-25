@@ -2,9 +2,32 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 
+class Callsign(models.Model):
+    class Meta:
+        db_table = "matcher_callsign"
+
+    id = models.BigAutoField(primary_key=True)
+    callsign = models.TextField(unique=True)
+
+    def __str__(self):
+        return self.callsign
+
+
+class AdifMetadata(models.Model):
+    class Meta:
+        db_table = "matcher_adif_metadata"
+
+    id = models.BigAutoField(primary_key=True)
+    process_time = models.BigIntegerField()
+    file_hash = models.TextField(unique=True)
+    adif_version = models.TextField(default="")
+    program_id = models.TextField(default="")
+    program_version = models.TextField(default="")
+
+
 class Contact(models.Model):
     class Meta:
-        db_table = "contacts"
+        db_table = "matcher_contact"
         unique_together = [("to_id", "date", "time", "from_id")]
 
     id = models.BigAutoField(primary_key=True)
@@ -35,7 +58,7 @@ class Contact(models.Model):
 
 class Match(models.Model):
     class Meta:
-        db_table = "matches"
+        db_table = "matcher_match"
         unique_together = [("a_id", "b_id")]
 
     id = models.BigAutoField(primary_key=True)

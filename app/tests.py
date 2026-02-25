@@ -139,3 +139,64 @@ def test_cannot_edit_other_users_callsign(logged_in, other_user):
     assert resp.status_code == 302
     cs.refresh_from_db()
     assert cs.name == "Old"
+
+
+def test_logbook_empty(logged_in):
+    resp = logged_in.get("/logbook/")
+    assert resp.status_code == 200
+    assert b"No contacts yet" in resp.content
+
+
+def test_logbook_shows_contacts(logged_in, user):
+    from contacts.models import Callsign, Contact
+
+    CallsignAssociation.objects.create(callsign="N7YHF", user=user)
+    me = Callsign.objects.create(callsign="N7YHF")
+    them = Callsign.objects.create(callsign="W1AW")
+
+    Contact.objects.create(
+        date=27427,  # 2025-02-01 (days since 1950-01-01)
+        time=840,  # 14:00 UTC
+        time_off=0, from_id=me.id, to_id=them.id,
+        band=8, mode=29, sub_mode=0,  # 20m FT8
+        grid=0, grid_size=0, dxcc=0, zone_cq=0, zone_itu=0, tx_power=0,
+    )
+
+    resp = logged_in.get("/logbook/")
+    assert resp.status_code == 200
+    assert b"W1AW" in resp.content
+    assert b"20m" in resp.content
+    assert b"FT8" in resp.content
+    assert b"14:00" in resp.content
+    assert b"table-success" not in resp.content
+
+
+def test_logbook_shows_confirmed(logged_in, user):
+    from contacts.models import Callsign, Contact, Match
+
+    CallsignAssociation.objects.create(callsign="N7YHF", user=user)
+    me = Callsign.objects.create(callsign="N7YHF")
+    them = Callsign.objects.create(callsign="W1AW")
+
+    my_contact = Contact.objects.create(
+        date=27427, time=840, time_off=0,
+        from_id=me.id, to_id=them.id,
+        band=8, mode=29, sub_mode=0,
+        grid=0, grid_size=0, dxcc=0, zone_cq=0, zone_itu=0, tx_power=0,
+    )
+    their_contact = Contact.objects.create(
+        date=27427, time=841, time_off=0,
+        from_id=them.id, to_id=me.id,
+        band=8, mode=29, sub_mode=0,
+        grid=0, grid_size=0, dxcc=0, zone_cq=0, zone_itu=0, tx_power=0,
+    )
+    Match.objects.create(
+        matched_at=1700000000,
+        a_id=my_contact.id, b_id=their_contact.id,
+        a_call_id=me.id, b_call_id=them.id,
+    )
+
+    resp = logged_in.get("/logbook/")
+    assert resp.status_code == 200
+    assert b"table-success" in resp.content
+    assert b"ago" in resp.content  # naturaltime output
