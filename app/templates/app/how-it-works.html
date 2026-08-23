@@ -6,7 +6,7 @@
 <h2>How It Works</h2>
 
 <p>
-  RGMS matches contacts when both parties upload their logs in ADIF format. The matching is deterministic &mdash; a contact either matches or it doesn't, there's no scoring or probability involved.
+  RGMS matches contacts when both parties upload their logs in ADIF format. The matching is deterministic: a contact either matches or it doesn't, there's no scoring or probability involved.
 </p>
 
 <h3>1. Upload your logs</h3>
@@ -18,10 +18,10 @@
 <p>When a log is uploaded, each contact is checked against existing contacts in the database. For a match to occur, <strong>all three</strong> of the following must be true:</p>
 
 <h4>Same band</h4>
-<p>Both contacts must be on the exact same band. No fuzzy matching &mdash; 20m and 40m are different bands, period. If the band isn't specified in your ADIF file, it will be inferred from the frequency.</p>
+<p>Both contacts must be on the same band: 20m and 40m don't match. If the band isn't specified in your ADIF file, it will be inferred from the frequency.</p>
 
 <h4>Within 30 minutes</h4>
-<p>The two contacts must be within a 30-minute window of each other. Each contact can have a start time and an optional end time (TIME_OFF). If the time ranges overlap, the condition is automatically satisfied. Contacts that cross midnight are handled correctly.</p>
+<p>The two contacts must be within a 30-minute window of each other. Each contact can have a start time and an optional end time (TIME_OFF). If the time ranges overlap, the condition is satisfied. Contacts that cross midnight are handled correctly.</p>
 
 <h4>Same mode or mode group</h4>
 <p>Modes are organized into groups. An exact mode match always works, but contacts in the same group also match:</p>
@@ -35,15 +35,15 @@
 
 <h3>3. Field inference</h3>
 
-<p>To maximize match potential, RGMS infers missing fields from your ADIF data when possible:</p>
+<p>To find more matches, RGMS infers missing fields from your ADIF data when possible:</p>
 
 <ul>
-  <li><strong>Band</strong> &mdash; inferred from FREQ or FREQ_RX if not specified</li>
-  <li><strong>Mode</strong> &mdash; derived from SUBMODE if MODE is missing (e.g. USB &rarr; SSB, FT4 &rarr; MFSK)</li>
-  <li><strong>DXCC</strong> &mdash; looked up from COUNTRY if not specified</li>
-  <li><strong>CQ/ITU Zone</strong> &mdash; derived from DXCC for single-zone countries, or resolved via state for multi-zone countries</li>
-  <li><strong>Grid square</strong> &mdash; calculated from MY_LAT/MY_LON if MY_GRIDSQUARE is missing</li>
-  <li><strong>Special activities</strong> &mdash; POTA, SOTA, WWFF, and IOTA references are read from their dedicated fields, or from MY_SIG/MY_SIG_INFO as a fallback</li>
+  <li><strong>Band:</strong> inferred from FREQ or FREQ_RX if not specified</li>
+  <li><strong>Mode:</strong> derived from SUBMODE if MODE is missing (e.g. USB &rarr; SSB, FT4 &rarr; MFSK)</li>
+  <li><strong>DXCC:</strong> looked up from COUNTRY if not specified</li>
+  <li><strong>CQ/ITU Zone:</strong> derived from DXCC for single-zone countries, or resolved via state for multi-zone countries</li>
+  <li><strong>Grid square:</strong> calculated from MY_LAT/MY_LON if MY_GRIDSQUARE is missing</li>
+  <li><strong>Special activities:</strong> POTA, SOTA, WWFF, and IOTA references are read from their dedicated fields, or from MY_SIG/MY_SIG_INFO as a fallback</li>
 </ul>
 
 <h3>4. Deduplication</h3>
