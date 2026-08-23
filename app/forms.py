@@ -1,8 +1,14 @@
 from django import forms
 from django.contrib.auth import authenticate, get_user_model, password_validation
+from django.contrib.auth.forms import AuthenticationForm
 from django_altcha import AltchaField
 
 User = get_user_model()
+
+
+class EmailAuthenticationForm(AuthenticationForm):
+    def clean_username(self):
+        return self.cleaned_data["username"].lower()
 
 
 class LoginForm(forms.Form):

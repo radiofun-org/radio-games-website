@@ -1,13 +1,20 @@
 from django.contrib import admin
+from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 from api.views import api as ninja_api
 
 from . import views
+from .forms import EmailAuthenticationForm
 
 urlpatterns = [
     path("", views.index, name="index"),
     path("about/", views.about, name="about"),
+    path(
+        "accounts/login/",
+        auth_views.LoginView.as_view(authentication_form=EmailAuthenticationForm),
+        name="login",
+    ),
     path("accounts/", include("django.contrib.auth.urls")),
     path("admin/", admin.site.urls),
     path("api/docs", views.api_docs, name="api-docs"),

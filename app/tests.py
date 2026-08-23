@@ -200,3 +200,15 @@ def test_logbook_shows_confirmed(logged_in, user):
     assert resp.status_code == 200
     assert b"table-success" in resp.content
     assert b"ago" in resp.content  # naturaltime output
+
+
+def test_login_email_case_insensitive(db):
+    AuthUser.objects.create_user(
+        username="op@example.com", email="op@example.com", password="testpass123"
+    )
+    client = Client()
+    resp = client.post(
+        "/accounts/login/",
+        {"username": "Op@Example.COM", "password": "testpass123"},
+    )
+    assert resp.status_code == 302
