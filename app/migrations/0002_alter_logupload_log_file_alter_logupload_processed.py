@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('app', '0001_initial'),
+        ("app", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='logupload',
-            name='log_file',
-            field=models.FileField(upload_to='uploads/%Y/%m/'),
+            model_name="logupload",
+            name="log_file",
+            field=models.FileField(upload_to="uploads/%Y/%m/"),
         ),
         migrations.AlterField(
-            model_name='logupload',
-            name='processed',
+            model_name="logupload",
+            name="processed",
             field=models.BooleanField(default=False),
         ),
     ]

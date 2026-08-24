@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('app', '0005_authuser_api_key'),
+        ("app", "0005_authuser_api_key"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='callsignassociation',
-            name='end_date',
+            model_name="callsignassociation",
+            name="end_date",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='callsignassociation',
-            name='start_date',
+            model_name="callsignassociation",
+            name="start_date",
             field=models.DateField(blank=True, null=True),
         ),
     ]

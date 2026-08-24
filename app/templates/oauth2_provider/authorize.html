@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Authorize Application{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 500px">
+  {% if not error %}
+  <h2 class="mb-4">Authorize {{ application.name }}?</h2>
+  <p>This application is requesting the following permissions:</p>
+  <ul class="mb-4">
+    {% for scope in scopes_descriptions %}
+    <li>{{ scope }}</li>
+    {% endfor %}
+  </ul>
+
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      {% if field.is_hidden %}{{ field }}{% endif %}
+    {% endfor %}
+    {{ form.errors }}
+    {{ form.non_field_errors }}
+    <input type="submit" class="btn btn-outline-secondary me-2" value="Cancel">
+    <input type="submit" class="btn btn-primary" name="allow" value="Authorize">
+  </form>
+  {% else %}
+  <h2 class="mb-4">Error: {{ error.error }}</h2>
+  <p>{{ error.description }}</p>
+  {% endif %}
+</div>
+{% endblock %}

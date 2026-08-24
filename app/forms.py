@@ -1,9 +1,9 @@
 from django import forms
-from django.contrib.auth import authenticate, get_user_model, password_validation
+from django.contrib.auth import authenticate, password_validation
 from django.contrib.auth.forms import AuthenticationForm
 from django_altcha import AltchaField
 
-User = get_user_model()
+from .models import AuthUser, CallsignAssociation
 
 
 class EmailAuthenticationForm(AuthenticationForm):
@@ -16,14 +16,14 @@ class LoginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
 
     def clean(self):
-        cleaned_data = super().clean()
-        email = cleaned_data.get("email", "").lower()
-        password = cleaned_data.get("password")
+        super().clean()
+        email = self.cleaned_data.get("email", "").lower()
+        password = self.cleaned_data.get("password")
         if email and password:
             self.user = authenticate(username=email, password=password)
             if self.user is None:
                 raise forms.ValidationError("Invalid email or password.")
-        return cleaned_data
+        return self.cleaned_data
 
 
 class SignUpForm(forms.Form):
@@ -34,23 +34,23 @@ class SignUpForm(forms.Form):
 
     def clean_email(self):
         email = self.cleaned_data["email"].lower()
-        if User.objects.filter(email=email).exists():
+        if AuthUser.objects.filter(email=email).exists():
             raise forms.ValidationError("An account with this email already exists.")
         return email
 
     def clean(self):
-        cleaned_data = super().clean()
-        password = cleaned_data.get("password")
-        if password and password != cleaned_data.get("password_confirm"):
+        super().clean()
+        password = self.cleaned_data.get("password")
+        if password and password != self.cleaned_data.get("password_confirm"):
             self.add_error("password_confirm", "Passwords do not match.")
         if password:
             password_validation.validate_password(password)
-        return cleaned_data
+        return self.cleaned_data
 
     def save(self):
         email = self.cleaned_data["email"]
         password = self.cleaned_data["password"]
-        return User.objects.create_user(username=email, email=email, password=password)
+        return AuthUser.objects.create_user(username=email, email=email, password=password)
 
 
 ADIF_EXTENSIONS = (".adi", ".adif", ".adx")
@@ -63,12 +63,12 @@ class LogUploadForm(forms.Form):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         if user:
-            from .models import CallsignAssociation
-
             choices = CallsignAssociation.objects.filter(user=user).values_list(
                 "callsign", "callsign"
             )
-            self.fields["callsign"].choices = [("", "Select callsign")] + list(choices)
+            callsign_field = self.fields["callsign"]
+            assert isinstance(callsign_field, forms.ChoiceField)
+            callsign_field.choices = [("", "Select callsign")] + list(choices)
 
     def clean_log_file(self):
         f = self.cleaned_data["log_file"]

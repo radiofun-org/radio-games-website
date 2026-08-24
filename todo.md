@@ -1,0 +1,10 @@
+- Account creation
+  - Including password reset, which will require e.g. mailgun
+  - Account deletion (for GDPR)
+- Profile
+  - See stats on matches (by country, mode, etc.)
+- API
+  - Add route to get full list of matches in some easy to use but compressed format (maybe just ADIF + gzip encoding?)
+    - With `since` filter so e.g. QRZ and logging applications could import performantly
+- OAuth2
+  - Allow app creation by each user, note that it's not needed for normal use but needed for building tools on top of Radiofun

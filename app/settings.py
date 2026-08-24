@@ -43,10 +43,12 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "api",
     "app",
+    "awards",
     "django.contrib.postgres",
     "contacts",
     "corsheaders",
     "django_altcha",
+    "oauth2_provider",
 ]
 
 MIDDLEWARE = [
@@ -139,3 +141,24 @@ SERVER_EMAIL = "no-reply@radio.games"
 
 ALTCHA_HMAC_KEY = os.getenv("ALTCHA_HMAC_KEY", "")
 ALTCHA_CACHE_ALIAS = "default"
+
+OAUTH2_PROVIDER = {
+    "SCOPES": {
+        "read": "Read access to your matches and callsigns",
+        "upload": "Upload ADIF logs on your behalf",
+    },
+    "DEFAULT_SCOPES": ["read"],
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 3600 * 24,  # 24 hours
+    # "http" stays allowed for native-app loopback callbacks (RFC 8252):
+    # desktop logging programs are the main OAuth consumers here
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["https", "http"],
+    # RFC 9700 (OAuth 2.0 Security BCP) compliance; these become the
+    # django-oauth-toolkit 4.0 defaults
+    "COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PASSWORD_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
+    "COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS": True,
+    "COMPLIANT_BCP_RFC9700_TOKEN_STORAGE": True,
+    "REFRESH_TOKEN_REUSE_PROTECTION": True,
+}

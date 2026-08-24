@@ -1,0 +1,25 @@
+[default_language_version]
+python = "python3.14"
+
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.16.4"
+
+[[repos.hooks]]
+id = "ruff-check"
+
+[[repos.hooks]]
+id = "ruff-format"
+
+# the project's locked ty (dev dependency), not ty-pre-commit's own download,
+# so the hook and `uv run ty` can never disagree; run `uv sync` once to create .venv
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "ty"
+name = "ty"
+language = "system"
+entry = ".venv/bin/ty check"
+types = ["python"]
+pass_filenames = false

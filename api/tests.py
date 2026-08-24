@@ -18,8 +18,13 @@ def api_client(user):
 def test_callsign_lookup(db):
     user = AuthUser.objects.create_user(username="lookup", password="testpass123")
     CallsignAssociation.objects.create(
-        callsign="W1AW", user=user, name="ARRL", country="United States",
-        grid_square="FN31pr", latitude=41.71, longitude=-72.73,
+        callsign="W1AW",
+        user=user,
+        name="ARRL",
+        country="United States",
+        grid_square="FN31pr",
+        latitude=41.71,
+        longitude=-72.73,
     )
     client = Client()
     resp = client.get("/api/callsign/W1AW/")
@@ -53,7 +58,10 @@ def test_matches_empty(api_client):
     client, api_key = api_client
     resp = client.get("/api/matches/", HTTP_X_API_KEY=api_key)
     assert resp.status_code == 200
-    assert resp.json() == []
+    data = resp.json()
+    assert data["results"] == []
+    assert data["next"] is None
+    assert data["previous"] is None
 
 
 def test_matches_returns_data(api_client):
@@ -69,15 +77,44 @@ def test_matches_returns_data(api_client):
     mc_a = Callsign.objects.create(callsign="W1AW")
     mc_b = Callsign.objects.create(callsign="VE3ABC")
 
-    Match.objects.create(matched_at=1700000000, a_id=1, b_id=2, a_call_id=mc_a.id, b_call_id=mc_b.id)
+    Match.objects.create(
+        matched_at=1700000000, a_id=1, b_id=2, a_call_id=mc_a.id, b_call_id=mc_b.id
+    )
 
     resp = client.get("/api/matches/", HTTP_X_API_KEY=api_key)
     assert resp.status_code == 200
-    data = resp.json()
-    assert len(data) == 1
-    assert data[0]["a_callsign"] == "W1AW"
-    assert data[0]["b_callsign"] == "VE3ABC"
-    assert data[0]["matched_at"] == 1700000000
+    results = resp.json()["results"]
+    assert len(results) == 1
+    assert results[0]["a_callsign"] == "W1AW"
+    assert results[0]["b_callsign"] == "VE3ABC"
+    assert results[0]["matched_at"] == 1700000000
+
+
+def test_matches_cursor_pagination(api_client):
+    from contacts.models import Callsign, Match
+
+    client, api_key = api_client
+    user = AuthUser.objects.get(username="testuser")
+    CallsignAssociation.objects.create(callsign="W1AW", user=user)
+    mc_a = Callsign.objects.create(callsign="W1AW")
+    mc_b = Callsign.objects.create(callsign="VE3ABC")
+
+    for i in range(3):
+        Match.objects.create(
+            matched_at=1700000000 + i, a_id=i, b_id=i + 10, a_call_id=mc_a.id, b_call_id=mc_b.id
+        )
+
+    resp = client.get("/api/matches/?page_size=2", HTTP_X_API_KEY=api_key)
+    assert resp.status_code == 200
+    page = resp.json()
+    assert [m["matched_at"] for m in page["results"]] == [1700000002, 1700000001]
+    assert page["next"] is not None
+
+    resp = client.get(page["next"], HTTP_X_API_KEY=api_key)
+    assert resp.status_code == 200
+    page = resp.json()
+    assert [m["matched_at"] for m in page["results"]] == [1700000000]
+    assert page["next"] is None
 
 
 def test_upload_requires_auth(db):
@@ -88,9 +125,7 @@ def test_upload_requires_auth(db):
 def test_upload_invalid_callsign(api_client):
     client, api_key = api_client
     adif = SimpleUploadedFile("test.adi", b"fake adif content")
-    resp = client.post(
-        "/api/upload/?callsign=NOCALL", {"log_file": adif}, HTTP_X_API_KEY=api_key
-    )
+    resp = client.post("/api/upload/?callsign=NOCALL", {"log_file": adif}, HTTP_X_API_KEY=api_key)
     assert resp.status_code == 400
 
 
@@ -100,9 +135,7 @@ def test_upload_success(api_client):
     CallsignAssociation.objects.create(callsign="W1AW", user=user)
 
     adif = SimpleUploadedFile("test.adi", b"fake adif content")
-    resp = client.post(
-        "/api/upload/?callsign=W1AW", {"log_file": adif}, HTTP_X_API_KEY=api_key
-    )
+    resp = client.post("/api/upload/?callsign=W1AW", {"log_file": adif}, HTTP_X_API_KEY=api_key)
     assert resp.status_code == 201
     data = resp.json()
     assert data["callsign"] == "W1AW"

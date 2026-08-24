@@ -11,7 +11,6 @@ def populate_api_keys(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("app", "0004_callsignassociation_country_and_more"),
     ]

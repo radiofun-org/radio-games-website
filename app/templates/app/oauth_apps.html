@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}OAuth Applications{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 800px">
+  <h2 class="mb-4">OAuth Applications</h2>
+
+  <p class="text-muted">OAuth applications let third-party tools access the radio.games API on behalf of users. You don't need an OAuth app for normal use — your API key is sufficient. OAuth is for building tools that other users can authorize.</p>
+
+  {% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+  {% endfor %}
+  {% endif %}
+
+  {% if apps %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Client ID</th>
+        <th>Client Secret</th>
+        <th>Redirect URIs</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for app in apps %}
+      <tr>
+        <td>{{ app.name }}</td>
+        <td><code class="small">{{ app.client_id }}</code></td>
+        <td><code class="small">{{ app.client_secret }}</code></td>
+        <td class="small">{{ app.redirect_uris|default:"—" }}</td>
+        <td>
+          <form method="post" action="{% url 'oauth-app-delete' app.pk %}" class="d-inline" onsubmit="return confirm('Delete {{ app.name }}? All tokens issued to this app will be revoked.')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted">No applications yet.</p>
+  {% endif %}
+
+  <hr class="my-4">
+
+  <h4 class="mb-3">Create application</h4>
+  <form method="post" action="{% url 'oauth-app-create' %}">
+    {% csrf_token %}
+    <div class="form-floating mb-3">
+      <input type="text" class="form-control" id="name" name="name" placeholder="App name" required>
+      <label for="name">Application name</label>
+    </div>
+    <div class="form-floating mb-3">
+      <input type="text" class="form-control" id="redirect_uris" name="redirect_uris" placeholder="https://example.com/callback">
+      <label for="redirect_uris">Redirect URI(s)</label>
+    </div>
+    <p class="text-muted small">Space-separated list of allowed redirect URIs for the OAuth flow.</p>
+    <button type="submit" class="btn btn-primary">Create application</button>
+  </form>
+
+  <hr class="my-4">
+
+  <h5>OAuth endpoints</h5>
+  <table class="table table-sm">
+    <tbody>
+      <tr><th>Authorization</th><td><code>/oauth/authorize/</code></td></tr>
+      <tr><th>Token</th><td><code>/oauth/token/</code></td></tr>
+      <tr><th>Revoke</th><td><code>/oauth/revoke_token/</code></td></tr>
+      <tr><th>Server metadata (RFC 8414)</th><td><code>/oauth/.well-known/oauth-authorization-server</code></td></tr>
+    </tbody>
+  </table>
+  <p class="text-muted small">Available scopes: <code>read</code> (matches and callsigns), <code>upload</code> (ADIF upload).</p>
+</div>
+{% endblock %}

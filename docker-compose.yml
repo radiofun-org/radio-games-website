@@ -56,6 +56,18 @@ services:
     volumes:
       - data:/var/lib/postgresql
 
+  awards-worker:
+    build:
+      context: .
+    depends_on:
+      - db
+      - redis
+    env_file: .env
+    image: radio-games-web
+    restart: unless-stopped
+    command: /venv/bin/python manage.py run_awards_worker
+    container_name: radio-games-awards-worker
+
   redis:
     container_name: radio-games-redis
     image: redis:8

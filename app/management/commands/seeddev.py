@@ -6,6 +6,8 @@ import time
 from django.core.management.base import BaseCommand
 
 from app.models import AuthUser, CallsignAssociation, LogUpload
+from awards.worker import evaluate_user
+from awards.models import AwardDefinition, AwardGrant, AwardProgress
 from contacts.decode import EPOCH
 from contacts.models import AdifMetadata, Callsign, Contact, Match
 
@@ -23,6 +25,7 @@ def encode_grid(locator: str) -> tuple[int, int]:
     if len(loc) >= 8:
         n = n * 100 + (ord(loc[6]) - 48) * 10 + (ord(loc[7]) - 48)
     return n + 1, len(locator)
+
 
 # Band/mode integer codes (must match Go matcher's adif.go)
 BAND_20M = 8
@@ -112,9 +115,7 @@ class Command(BaseCommand):
             self.stdout.write("User already exists, resetting data...")
             # Clean up existing seed data
             user_calls = list(
-                CallsignAssociation.objects.filter(user=user).values_list(
-                    "callsign", flat=True
-                )
+                CallsignAssociation.objects.filter(user=user).values_list("callsign", flat=True)
             )
             mc_ids = list(
                 Callsign.objects.filter(callsign__in=user_calls).values_list("id", flat=True)
@@ -128,26 +129,44 @@ class Command(BaseCommand):
             CallsignAssociation.objects.filter(user=user).delete()
             LogUpload.objects.filter(user=user).delete()
             AdifMetadata.objects.all().delete()
+            AwardGrant.objects.filter(user=user).delete()
+            AwardProgress.objects.filter(user=user).delete()
 
         # -- Callsign associations --
         assocs = [
             CallsignAssociation(
-                callsign="N7YHF", user=user, verified=True,
-                name="Beau Gunderson", country="United States",
-                grid_square="CN87us", latitude=47.66, longitude=-122.30,
-                start_date="2023-06-15", end_date=None,
-            ),
-            CallsignAssociation(
-                callsign="KI7YMU", user=user, verified=True,
-                name="Beau Gunderson", country="United States",
-                grid_square="CN87us", latitude=47.66, longitude=-122.30,
-                start_date="2020-01-10", end_date="2023-06-14",
-            ),
-            CallsignAssociation(
-                callsign="W7RGM", user=user, verified=False,
-                name="Radio Games Matching Club", country="United States",
+                callsign="N7YHF",
+                user=user,
+                verified=True,
+                name="Beau Gunderson",
+                country="United States",
                 grid_square="CN87us",
-                start_date="2025-01-01", end_date=None,
+                latitude=47.66,
+                longitude=-122.30,
+                start_date="2023-06-15",
+                end_date=None,
+            ),
+            CallsignAssociation(
+                callsign="KI7YMU",
+                user=user,
+                verified=True,
+                name="Beau Gunderson",
+                country="United States",
+                grid_square="CN87us",
+                latitude=47.66,
+                longitude=-122.30,
+                start_date="2020-01-10",
+                end_date="2023-06-14",
+            ),
+            CallsignAssociation(
+                callsign="W7RGM",
+                user=user,
+                verified=False,
+                name="Radio Games Matching Club",
+                country="United States",
+                grid_square="CN87us",
+                start_date="2025-01-01",
+                end_date=None,
             ),
         ]
         CallsignAssociation.objects.bulk_create(assocs)
@@ -156,9 +175,7 @@ class Command(BaseCommand):
         # -- Matcher-side callsigns --
         my_calls = ["N7YHF", "KI7YMU", "W7RGM"]
         all_calls = my_calls + OTHER_CALLS
-        callsign_objs = Callsign.objects.bulk_create(
-            [Callsign(callsign=c) for c in all_calls]
-        )
+        callsign_objs = Callsign.objects.bulk_create([Callsign(callsign=c) for c in all_calls])
         cs_map = {c.callsign: c.id for c in callsign_objs}
         self.stdout.write(f"Created {len(cs_map)} matcher callsigns")
 
@@ -174,15 +191,21 @@ class Command(BaseCommand):
         # -- Uploads (mark as processed) --
         LogUpload.objects.create(
             log_file="uploads/seed/n7yhf_2025.adi",
-            callsign="N7YHF", user=user, processed=True,
+            callsign="N7YHF",
+            user=user,
+            processed=True,
         )
         LogUpload.objects.create(
             log_file="uploads/seed/ki7ymu_2024.adi",
-            callsign="KI7YMU", user=user, processed=True,
+            callsign="KI7YMU",
+            user=user,
+            processed=True,
         )
         LogUpload.objects.create(
             log_file="uploads/seed/n7yhf_latest.adi",
-            callsign="N7YHF", user=user, processed=False,
+            callsign="N7YHF",
+            user=user,
+            processed=False,
         )
         self.stdout.write("Created 3 log uploads (2 processed, 1 pending)")
 
@@ -214,14 +237,25 @@ class Command(BaseCommand):
             dxcc, cq, itu, grid_str = STATION_INFO[other]
             grid_num, grid_len = encode_grid(grid_str)
 
-            contacts.append(Contact(
-                adif_metadata_id=meta.id,
-                date=d, time=t, time_off=0,
-                from_id=cs_map["N7YHF"], to_id=cs_map[other],
-                band=band, mode=mode, sub_mode=sub,
-                grid=grid_num, grid_size=grid_len, dxcc=dxcc,
-                zone_cq=cq, zone_itu=itu, tx_power=0,
-            ))
+            contacts.append(
+                Contact(
+                    adif_metadata_id=meta.id,
+                    date=d,
+                    time=t,
+                    time_off=0,
+                    from_id=cs_map["N7YHF"],
+                    to_id=cs_map[other],
+                    band=band,
+                    mode=mode,
+                    sub_mode=sub,
+                    grid=grid_num,
+                    grid_size=grid_len,
+                    dxcc=dxcc,
+                    zone_cq=cq,
+                    zone_itu=itu,
+                    tx_power=0,
+                )
+            )
 
         # QSOs as KI7YMU (old call) — fewer, older
         for i in range(30):
@@ -235,32 +269,47 @@ class Command(BaseCommand):
             dxcc, cq, itu, grid_str = STATION_INFO[other]
             grid_num, grid_len = encode_grid(grid_str)
 
-            contacts.append(Contact(
-                adif_metadata_id=meta.id,
-                date=d, time=t, time_off=0,
-                from_id=cs_map["KI7YMU"], to_id=cs_map[other],
-                band=band, mode=mode, sub_mode=sub,
-                grid=grid_num, grid_size=grid_len, dxcc=dxcc,
-                zone_cq=cq, zone_itu=itu, tx_power=0,
-            ))
+            contacts.append(
+                Contact(
+                    adif_metadata_id=meta.id,
+                    date=d,
+                    time=t,
+                    time_off=0,
+                    from_id=cs_map["KI7YMU"],
+                    to_id=cs_map[other],
+                    band=band,
+                    mode=mode,
+                    sub_mode=sub,
+                    grid=grid_num,
+                    grid_size=grid_len,
+                    dxcc=dxcc,
+                    zone_cq=cq,
+                    zone_itu=itu,
+                    tx_power=0,
+                )
+            )
 
         Contact.objects.bulk_create(contacts)
         # Refresh to get IDs
         my_matcher_ids = [cs_map["N7YHF"], cs_map["KI7YMU"], cs_map["W7RGM"]]
-        all_contacts = list(
-            Contact.objects.filter(from_id__in=my_matcher_ids).order_by("id")
-        )
+        all_contacts = list(Contact.objects.filter(from_id__in=my_matcher_ids).order_by("id"))
         self.stdout.write(f"Created {len(all_contacts)} contacts")
 
         # -- "Other side" contacts + matches --
         # Simulate the other station also uploading — ~40% confirmation rate
         other_contacts = []
-        match_pairs = []
 
         # Sample refs for other-side contacts
         pota_parks = [
-            "K-0059", "K-0817", "K-4566", "K-1234", "K-9876",
-            "VE-0012", "G-0001", "DL-0042", "JA-0003",
+            "K-0059",
+            "K-0817",
+            "K-4566",
+            "K-1234",
+            "K-9876",
+            "VE-0012",
+            "G-0001",
+            "DL-0042",
+            "JA-0003",
         ]
         sota_summits = ["W7W/KG-049", "W7W/LC-001", "W1/CR-001", "G/LD-001", "DL/AL-001"]
         wwff_refs = ["KFF-0059", "KFF-1234", "DLFF-0042", "JAFF-0003"]
@@ -288,11 +337,20 @@ class Command(BaseCommand):
 
                 oc = Contact(
                     adif_metadata_id=meta.id,
-                    date=c.date, time=other_time, time_off=0,
-                    from_id=c.to_id, to_id=c.from_id,
-                    band=c.band, mode=c.mode, sub_mode=c.sub_mode,
-                    grid=0, grid_size=0, dxcc=0,
-                    zone_cq=0, zone_itu=0, tx_power=0,
+                    date=c.date,
+                    time=other_time,
+                    time_off=0,
+                    from_id=c.to_id,
+                    to_id=c.from_id,
+                    band=c.band,
+                    mode=c.mode,
+                    sub_mode=c.sub_mode,
+                    grid=0,
+                    grid_size=0,
+                    dxcc=0,
+                    zone_cq=0,
+                    zone_itu=0,
+                    tx_power=0,
                     **ref_kwargs,
                 )
                 other_contacts.append((c, oc))
@@ -311,16 +369,174 @@ class Command(BaseCommand):
         matches = []
         for (my_c, _), their_c in zip(other_contacts, other_objs):
             a_id, b_id = sorted([my_c.id, their_c.id])
-            matches.append(Match(
-                matched_at=now_ts - rng.randint(0, 86400 * 30),
-                a_id=a_id, b_id=b_id,
-                a_call_id=my_c.from_id, b_call_id=their_c.from_id,
-            ))
+            matches.append(
+                Match(
+                    matched_at=now_ts - rng.randint(0, 86400 * 30),
+                    a_id=a_id,
+                    b_id=b_id,
+                    a_call_id=my_c.from_id,
+                    b_call_id=their_c.from_id,
+                )
+            )
 
         Match.objects.bulk_create(matches)
         self.stdout.write(f"Created {len(other_contacts)} reciprocal contacts")
         self.stdout.write(f"Created {len(matches)} matches")
 
-        self.stdout.write(self.style.SUCCESS(
-            f"\nDev data seeded. Login: beau@beaugunderson.com / password"
-        ))
+        # -- Award definitions --
+        AwardGrant.objects.filter(user=user).delete()
+        AwardProgress.objects.filter(user=user).delete()
+        AwardDefinition.objects.all().delete()
+
+        award_defs = [
+            # Contact count awards
+            AwardDefinition(
+                slug="first-contact",
+                name="First Contact",
+                description="Make your first confirmed contact.",
+                category="contacts",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count", "threshold": 1},
+                sort_order=10,
+            ),
+            AwardDefinition(
+                slug="contacts-10",
+                name="Making Waves",
+                description="10 confirmed contacts.",
+                category="contacts",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count", "threshold": 10},
+                sort_order=20,
+            ),
+            AwardDefinition(
+                slug="contacts-50",
+                name="Ragchewer",
+                description="50 confirmed contacts.",
+                category="contacts",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count", "threshold": 50},
+                sort_order=30,
+            ),
+            AwardDefinition(
+                slug="contacts-100",
+                name="Centurion",
+                description="100 confirmed contacts.",
+                category="contacts",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count", "threshold": 100},
+                sort_order=40,
+            ),
+            # Entity awards
+            AwardDefinition(
+                slug="entities-10",
+                name="DX Explorer",
+                description="Confirm contacts with 10 unique entities.",
+                category="entities",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count_distinct", "field": "dxcc", "thresholds": [10]},
+                sort_order=100,
+            ),
+            AwardDefinition(
+                slug="entities-25",
+                name="DX Adventurer",
+                description="Confirm contacts with 25 unique entities.",
+                category="entities",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count_distinct", "field": "dxcc", "thresholds": [25]},
+                sort_order=110,
+            ),
+            AwardDefinition(
+                slug="entities-50",
+                name="DX Voyager",
+                description="Confirm contacts with 50 unique entities.",
+                category="entities",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count_distinct", "field": "dxcc", "thresholds": [50]},
+                sort_order=120,
+            ),
+            AwardDefinition(
+                slug="entities-100",
+                name="Globe Trotter",
+                description="Confirm contacts with 100 unique entities.",
+                category="entities",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count_distinct", "field": "dxcc", "thresholds": [100]},
+                sort_order=130,
+            ),
+            # CQ Zone awards
+            AwardDefinition(
+                slug="all-zones",
+                name="All Zones",
+                description="Confirm contacts in all 40 CQ zones.",
+                category="zones",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={
+                    "type": "collect_all",
+                    "field": "zone_cq",
+                    "required": list(range(1, 41)),
+                },
+                sort_order=200,
+            ),
+            # Band-specific awards
+            AwardDefinition(
+                slug="entities-10-20m",
+                name="DX Explorer 20m",
+                description="Confirm contacts with 10 unique entities on 20m.",
+                category="entities",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={
+                    "type": "count_distinct",
+                    "field": "dxcc",
+                    "filter": {"band": BAND_20M},
+                    "thresholds": [10],
+                },
+                sort_order=140,
+            ),
+            AwardDefinition(
+                slug="entities-10-40m",
+                name="DX Explorer 40m",
+                description="Confirm contacts with 10 unique entities on 40m.",
+                category="entities",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={
+                    "type": "count_distinct",
+                    "field": "dxcc",
+                    "filter": {"band": BAND_40M},
+                    "thresholds": [10],
+                },
+                sort_order=150,
+            ),
+            # Mode-specific awards
+            AwardDefinition(
+                slug="ft8-50",
+                name="FT8 Enthusiast",
+                description="50 confirmed FT8 contacts.",
+                category="modes",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count", "filter": {"mode": MODE_FT8}, "threshold": 50},
+                sort_order=300,
+            ),
+            AwardDefinition(
+                slug="cw-10",
+                name="CW Beginner",
+                description="10 confirmed CW contacts.",
+                category="modes",
+                tier=AwardDefinition.Tier.QUERY,
+                evaluator={"type": "count", "filter": {"mode": MODE_CW}, "threshold": 10},
+                sort_order=310,
+            ),
+        ]
+
+        AwardDefinition.objects.bulk_create(award_defs)
+        self.stdout.write(f"Created {len(award_defs)} award definitions")
+
+        # -- Evaluate awards for the seeded user --
+        evaluate_user(user.pk)
+
+        grants = AwardGrant.objects.filter(user=user).count()
+        progress = AwardProgress.objects.filter(user=user).count()
+        self.stdout.write(f"Evaluated awards: {grants} granted, {progress} progress records")
+
+        self.stdout.write(
+            self.style.SUCCESS("\nDev data seeded. Login: beau@beaugunderson.com / password")
+        )

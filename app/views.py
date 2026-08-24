@@ -1,18 +1,20 @@
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import httpx
 import redis
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.db.models import Q
-from django.http import JsonResponse
+from django.db.models import Count, Q
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from contacts.decode import (
+    BANDS,
+    MODES,
     decode_band,
     decode_date,
     decode_dxcc,
@@ -21,6 +23,8 @@ from contacts.decode import (
     decode_time,
 )
 from contacts.models import Callsign, Contact, Match
+
+from oauth2_provider.models import Application
 
 from .forms import LoginForm, LogUploadForm, SignUpForm
 from .models import CallsignAssociation, LogUpload, generate_api_key
@@ -49,11 +53,15 @@ def index(request):
                 login(request, user, backend=BACKEND)
                 return redirect("index")
 
-    return render(request, "app/index.html", {
-        "signup_form": signup_form,
-        "login_form": login_form,
-        "is_login": is_login,
-    })
+    return render(
+        request,
+        "app/index.html",
+        {
+            "signup_form": signup_form,
+            "login_form": login_form,
+            "is_login": is_login,
+        },
+    )
 
 
 def api_docs(request):
@@ -72,7 +80,7 @@ def how_it_works(request):
     return render(request, "app/how-it-works.html")
 
 
-@login_required
+@login_required()
 def upload(request):
     if request.method == "POST":
         form = LogUploadForm(request.POST, request.FILES, user=request.user)
@@ -85,7 +93,7 @@ def upload(request):
             log_upload.save()
 
             r = redis.from_url(settings.REDIS_URL)
-            r.lpush("log_upload_queue", log_upload.id)
+            r.lpush("log_upload_queue", log_upload.pk)
 
             messages.success(request, "Log uploaded successfully! It will be processed shortly.")
             return redirect("upload")
@@ -95,7 +103,7 @@ def upload(request):
     return render(request, "app/upload.html", {"form": form, "recent_uploads": recent_uploads})
 
 
-@login_required
+@login_required()
 def profile(request):
     user = request.user
     callsigns = CallsignAssociation.objects.filter(user=user)
@@ -106,24 +114,67 @@ def profile(request):
         Callsign.objects.filter(callsign__in=user_callsign_strs).values_list("id", flat=True)
     )
     match_count = (
-        Match.objects.filter(
-            Q(a_call_id__in=matcher_ids) | Q(b_call_id__in=matcher_ids)
-        ).count()
+        Match.objects.filter(Q(a_call_id__in=matcher_ids) | Q(b_call_id__in=matcher_ids)).count()
         if matcher_ids
         else 0
     )
 
-    return render(request, "app/profile.html", {
-        "upload_count": upload_count,
-        "contact_count": len(user_callsign_strs),
-        "match_count": match_count,
-        "callsigns": callsigns,
-    })
+    # Stats breakdowns from contacts where this user is the "from" station
+    stats = {"by_mode": [], "by_band": [], "by_country": []}
+    if matcher_ids:
+        user_contacts = Contact.objects.filter(from_id__in=matcher_ids)
+
+        mode_counts = (
+            user_contacts.values("mode").annotate(count=Count("id")).order_by("-count")[:15]
+        )
+        stats["by_mode"] = [
+            {"label": MODES.get(row["mode"], f"?{row['mode']}"), "count": row["count"]}
+            for row in mode_counts
+        ]
+
+        band_counts = (
+            user_contacts.values("band").annotate(count=Count("id")).order_by("-count")[:15]
+        )
+        stats["by_band"] = [
+            {"label": BANDS.get(row["band"], f"?{row['band']}"), "count": row["count"]}
+            for row in band_counts
+        ]
+
+        dxcc_counts = (
+            user_contacts.values("dxcc")
+            .annotate(count=Count("id"))
+            .filter(dxcc__gt=0)
+            .order_by("-count")[:15]
+        )
+        stats["by_country"] = [
+            {"label": decode_dxcc(row["dxcc"]), "count": row["count"]} for row in dxcc_counts
+        ]
+
+    return render(
+        request,
+        "app/profile.html",
+        {
+            "upload_count": upload_count,
+            "contact_count": len(user_callsign_strs),
+            "match_count": match_count,
+            "callsigns": callsigns,
+            "stats": stats,
+        },
+    )
 
 
-@login_required
-@require_POST
-def api_key_reset(request):
+@login_required()  # ty: ignore[invalid-argument-type]
+@require_POST  # ty: ignore[invalid-argument-type]
+def account_delete(request) -> HttpResponseRedirect:
+    user = request.user
+    logout(request)
+    user.delete()
+    return redirect("index")
+
+
+@login_required()  # ty: ignore[invalid-argument-type]
+@require_POST  # ty: ignore[invalid-argument-type]
+def api_key_reset(request) -> HttpResponseRedirect:
     request.user.api_key = generate_api_key()
     request.user.save(update_fields=["api_key"])
     messages.success(request, "API key has been reset.")
@@ -138,26 +189,26 @@ def public_callsign(request, callsign: str):
 
     matcher_cs = Callsign.objects.filter(callsign=callsign).first()
     matcher_id = matcher_cs.id if matcher_cs else -1
-    contact_count = Contact.objects.filter(
-        Q(from_id=matcher_id) | Q(to_id=matcher_id)
-    ).count()
-    match_count = Match.objects.filter(
-        Q(a_call_id=matcher_id) | Q(b_call_id=matcher_id)
-    ).count()
+    contact_count = Contact.objects.filter(Q(from_id=matcher_id) | Q(to_id=matcher_id)).count()
+    match_count = Match.objects.filter(Q(a_call_id=matcher_id) | Q(b_call_id=matcher_id)).count()
 
-    return render(request, "app/public_callsign.html", {
-        "callsign": callsign,
-        "found": True,
-        "assoc": assoc,
-        "contact_count": contact_count,
-        "match_count": match_count,
-    })
+    return render(
+        request,
+        "app/public_callsign.html",
+        {
+            "callsign": callsign,
+            "found": True,
+            "assoc": assoc,
+            "contact_count": contact_count,
+            "match_count": match_count,
+        },
+    )
 
 
 LOGBOOK_PAGE_SIZE = 100
 
 
-@login_required
+@login_required()
 def logbook(request):
     user = request.user
     user_callsigns = list(
@@ -176,8 +227,9 @@ def logbook(request):
     offset = (page - 1) * LOGBOOK_PAGE_SIZE
 
     contacts = list(
-        Contact.objects.filter(from_id__in=matcher_ids)
-        .order_by("-date", "-time")[offset : offset + LOGBOOK_PAGE_SIZE + 1]
+        Contact.objects.filter(from_id__in=matcher_ids).order_by("-date", "-time")[
+            offset : offset + LOGBOOK_PAGE_SIZE + 1
+        ]
     )
     has_next = len(contacts) > LOGBOOK_PAGE_SIZE
     contacts = contacts[:LOGBOOK_PAGE_SIZE]
@@ -189,9 +241,9 @@ def logbook(request):
     # Find matches and the other side's contact for sig/ref data
     contact_ids = {c.id for c in contacts}
     match_rows = list(
-        Match.objects.filter(
-            Q(a_id__in=contact_ids) | Q(b_id__in=contact_ids)
-        ).values_list("a_id", "b_id", "matched_at")
+        Match.objects.filter(Q(a_id__in=contact_ids) | Q(b_id__in=contact_ids)).values_list(
+            "a_id", "b_id", "matched_at"
+        )
     )
 
     matched_at_map: dict[int, int] = {}
@@ -223,9 +275,9 @@ def logbook(request):
     profile_urls: dict[str, str] = {}
     if to_callsigns:
         # Find associations for these callsigns (any user)
-        assoc_qs = CallsignAssociation.objects.filter(
-            callsign__in=to_callsigns
-        ).values_list("callsign", "user_id")
+        assoc_qs = CallsignAssociation.objects.filter(callsign__in=to_callsigns).values_list(
+            "callsign", "user_id"
+        )
         for call, user_id in assoc_qs:
             # TODO: filter by date range once public profiles exist
             profile_urls[call] = f"/call/{call}/"
@@ -251,28 +303,70 @@ def logbook(request):
                 refs.append(f"{other.my_sig} {other.my_sig_info}")
 
         call_str = callsign_map.get(c.to_id, "?")
-        rows.append({
-            "date": decode_date(c.date),
-            "time": decode_time(c.time),
-            "my_call": callsign_map.get(c.from_id, "?"),
-            "callsign": call_str,
-            "callsign_url": profile_urls.get(call_str),
-            "band": decode_band(c.band),
-            "mode": decode_mode(c.mode, c.sub_mode),
-            "grid": decode_grid(c.grid, c.grid_size),
-            "dxcc": decode_dxcc(c.dxcc),
-            "cq_zone": c.zone_cq or None,
-            "itu_zone": c.zone_itu or None,
-            "refs": ", ".join(refs),
-            "confirmed": ts is not None,
-            "matched_at": datetime.fromtimestamp(ts, tz=timezone.utc) if ts else None,
-        })
+        rows.append(
+            {
+                "date": decode_date(c.date),
+                "time": decode_time(c.time),
+                "my_call": callsign_map.get(c.from_id, "?"),
+                "callsign": call_str,
+                "callsign_url": profile_urls.get(call_str),
+                "band": decode_band(c.band),
+                "mode": decode_mode(c.mode, c.sub_mode),
+                "grid": decode_grid(c.grid, c.grid_size),
+                "dxcc": decode_dxcc(c.dxcc),
+                "cq_zone": c.zone_cq or None,
+                "itu_zone": c.zone_itu or None,
+                "refs": ", ".join(refs),
+                "confirmed": ts is not None,
+                "matched_at": datetime.fromtimestamp(ts, tz=UTC) if ts else None,
+            }
+        )
 
-    return render(request, "app/logbook.html", {
-        "rows": rows,
-        "page": page,
-        "has_next": has_next,
-    })
+    return render(
+        request,
+        "app/logbook.html",
+        {
+            "rows": rows,
+            "page": page,
+            "has_next": has_next,
+        },
+    )
+
+
+@login_required()
+def oauth_app_list(request):
+    apps = Application.objects.filter(user=request.user)
+    return render(request, "app/oauth_apps.html", {"apps": apps})
+
+
+@login_required()  # ty: ignore[invalid-argument-type]
+@require_POST  # ty: ignore[invalid-argument-type]
+def oauth_app_create(request) -> HttpResponseRedirect:
+    name = request.POST.get("name", "").strip()
+    redirect_uris = request.POST.get("redirect_uris", "").strip()
+    if not name:
+        messages.error(request, "Application name is required.")
+        return redirect("oauth-app-list")
+    Application.objects.create(
+        user=request.user,
+        name=name,
+        redirect_uris=redirect_uris,
+        client_type=Application.CLIENT_CONFIDENTIAL,
+        authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
+    )
+    messages.success(request, f"Application '{name}' created.")
+    return redirect("oauth-app-list")
+
+
+@login_required()  # ty: ignore[invalid-argument-type]
+@require_POST  # ty: ignore[invalid-argument-type]
+def oauth_app_delete(request, pk) -> HttpResponseRedirect:
+    deleted, _ = Application.objects.filter(pk=pk, user=request.user).delete()
+    if deleted:
+        messages.success(request, "Application deleted.")
+    else:
+        messages.error(request, "Application not found.")
+    return redirect("oauth-app-list")
 
 
 async def fetch_callook(callsign: str) -> dict | None:
@@ -282,7 +376,7 @@ async def fetch_callook(callsign: str) -> dict | None:
             resp = await client.get(url, timeout=5.0)
             resp.raise_for_status()
             data = resp.json()
-    except (httpx.HTTPError, ValueError):
+    except httpx.HTTPError, ValueError:
         return None
 
     if data.get("status") != "VALID":
@@ -297,20 +391,20 @@ async def fetch_callook(callsign: str) -> dict | None:
         try:
             result["latitude"] = float(location["latitude"])
             result["longitude"] = float(location["longitude"])
-        except (KeyError, ValueError, TypeError):
+        except KeyError, ValueError, TypeError:
             pass
     if other_info := data.get("otherInfo"):
         if grant_date := other_info.get("grantDate"):
             try:
-                result["effective_date"] = datetime.strptime(
-                    grant_date, "%m/%d/%Y"
-                ).strftime("%Y-%m-%d")
+                result["effective_date"] = datetime.strptime(grant_date, "%m/%d/%Y").strftime(
+                    "%Y-%m-%d"
+                )
             except ValueError:
                 pass
     return result
 
 
-@login_required
+@login_required()
 async def callsign_lookup(request):
     callsign = request.GET.get("callsign", "").strip().upper()
     if not callsign:
@@ -321,9 +415,9 @@ async def callsign_lookup(request):
     return JsonResponse({}, status=404)
 
 
-@login_required
-@require_POST
-def callsign_add(request):
+@login_required()  # ty: ignore[invalid-argument-type]
+@require_POST  # ty: ignore[invalid-argument-type]
+def callsign_add(request) -> HttpResponseRedirect:
     callsign = request.POST.get("callsign", "").strip().upper()
     if not callsign:
         messages.error(request, "Callsign is required.")
@@ -350,9 +444,9 @@ def callsign_add(request):
     return redirect("profile")
 
 
-@login_required
-@require_POST
-def callsign_edit(request, pk):
+@login_required()  # ty: ignore[invalid-argument-type]
+@require_POST  # ty: ignore[invalid-argument-type]
+def callsign_edit(request, pk) -> HttpResponseRedirect:
     try:
         cs = CallsignAssociation.objects.get(pk=pk, user=request.user)
     except CallsignAssociation.DoesNotExist:
@@ -369,9 +463,9 @@ def callsign_edit(request, pk):
     return redirect("profile")
 
 
-@login_required
-@require_POST
-def callsign_delete(request, pk):
+@login_required()  # ty: ignore[invalid-argument-type]
+@require_POST  # ty: ignore[invalid-argument-type]
+def callsign_delete(request, pk) -> HttpResponseRedirect:
     deleted, _ = CallsignAssociation.objects.filter(pk=pk, user=request.user).delete()
     if deleted:
         messages.success(request, "Callsign removed.")

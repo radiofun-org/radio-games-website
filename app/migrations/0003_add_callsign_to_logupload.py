@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('app', '0002_alter_logupload_log_file_alter_logupload_processed'),
+        ("app", "0002_alter_logupload_log_file_alter_logupload_processed"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='logupload',
-            name='callsign',
-            field=models.CharField(default='', max_length=16),
+            model_name="logupload",
+            name="callsign",
+            field=models.CharField(default="", max_length=16),
         ),
     ]

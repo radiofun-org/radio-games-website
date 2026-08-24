@@ -4,44 +4,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('app', '0003_add_callsign_to_logupload'),
+        ("app", "0003_add_callsign_to_logupload"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='callsignassociation',
-            name='country',
-            field=models.CharField(blank=True, default='', max_length=100),
+            model_name="callsignassociation",
+            name="country",
+            field=models.CharField(blank=True, default="", max_length=100),
         ),
         migrations.AddField(
-            model_name='callsignassociation',
-            name='grid_square',
-            field=models.CharField(blank=True, default='', max_length=8),
+            model_name="callsignassociation",
+            name="grid_square",
+            field=models.CharField(blank=True, default="", max_length=8),
         ),
         migrations.AddField(
-            model_name='callsignassociation',
-            name='latitude',
+            model_name="callsignassociation",
+            name="latitude",
             field=models.FloatField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='callsignassociation',
-            name='longitude',
+            model_name="callsignassociation",
+            name="longitude",
             field=models.FloatField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='callsignassociation',
-            name='name',
-            field=models.CharField(blank=True, default='', max_length=100),
+            model_name="callsignassociation",
+            name="name",
+            field=models.CharField(blank=True, default="", max_length=100),
         ),
         migrations.AlterField(
-            model_name='callsignassociation',
-            name='verified',
+            model_name="callsignassociation",
+            name="verified",
             field=models.BooleanField(default=False),
         ),
         migrations.AddConstraint(
-            model_name='callsignassociation',
-            constraint=models.UniqueConstraint(fields=('callsign', 'user'), name='unique_callsign_per_user'),
+            model_name="callsignassociation",
+            constraint=models.UniqueConstraint(
+                fields=("callsign", "user"), name="unique_callsign_per_user"
+            ),
         ),
     ]
