@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib.auth import authenticate, password_validation
 from django.contrib.auth.forms import AuthenticationForm
 from django_altcha import AltchaField
@@ -56,6 +57,20 @@ class SignUpForm(forms.Form):
 ADIF_EXTENSIONS = (".adi", ".adif", ".adx")
 
 
+def log_file_error(f) -> str | None:
+    """Validate an uploaded ADIF file; return an error message or None.
+
+    Shared by the upload form and the API endpoint. The size cap protects the
+    matcher, which parses the whole file into memory.
+    """
+    if not f.name.lower().endswith(ADIF_EXTENSIONS):
+        return "Only ADIF files (.adi, .adif, .adx) are accepted."
+    if f.size > settings.MAX_LOG_FILE_SIZE:
+        max_mb = settings.MAX_LOG_FILE_SIZE // (1024 * 1024)
+        return f"File is too large (maximum {max_mb} MB)."
+    return None
+
+
 class LogUploadForm(forms.Form):
     callsign = forms.ChoiceField(label="Your callsign")
     log_file = forms.FileField(label="ADIF log file")
@@ -72,6 +87,6 @@ class LogUploadForm(forms.Form):
 
     def clean_log_file(self):
         f = self.cleaned_data["log_file"]
-        if not f.name.lower().endswith(ADIF_EXTENSIONS):
-            raise forms.ValidationError("Only ADIF files (.adi, .adif, .adx) are accepted.")
+        if error := log_file_error(f):
+            raise forms.ValidationError(error)
         return f

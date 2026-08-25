@@ -3,7 +3,8 @@
 {% block title %}How It Works{% endblock %}
 
 {% block content %}
-<h2>How It Works</h2>
+<div class="prose">
+<h1 class="page-title">How it works</h1>
 
 <p>
   RGMS matches contacts when both parties upload their logs in ADIF format. The matching is deterministic: a contact either matches or it doesn't, there's no scoring or probability involved.
@@ -21,7 +22,7 @@
 <p>Both contacts must be on the same band: 20m and 40m don't match. If the band isn't specified in your ADIF file, it will be inferred from the frequency.</p>
 
 <h4>Within 30 minutes</h4>
-<p>The two contacts must be within a 30-minute window of each other. Each contact can have a start time and an optional end time (TIME_OFF). If the time ranges overlap, the condition is satisfied. Contacts that cross midnight are handled correctly.</p>
+<p>The two contacts must be within a 30-minute window of each other. Each contact can have a start time and an optional end time (<code>TIME_OFF</code>). If the time ranges overlap, the condition is satisfied. Contacts that cross midnight are handled correctly.</p>
 
 <h4>Same mode or mode group</h4>
 <p>Modes are organized into groups. An exact mode match always works, but contacts in the same group also match:</p>
@@ -38,15 +39,16 @@
 <p>To find more matches, RGMS infers missing fields from your ADIF data when possible:</p>
 
 <ul>
-  <li><strong>Band:</strong> inferred from FREQ or FREQ_RX if not specified</li>
-  <li><strong>Mode:</strong> derived from SUBMODE if MODE is missing (e.g. USB &rarr; SSB, FT4 &rarr; MFSK)</li>
-  <li><strong>DXCC:</strong> looked up from COUNTRY if not specified</li>
+  <li><strong>Band:</strong> inferred from <code>FREQ</code> or <code>FREQ_RX</code> if not specified</li>
+  <li><strong>Mode:</strong> derived from <code>SUBMODE</code> if <code>MODE</code> is missing (e.g. USB &rarr; SSB, FT4 &rarr; MFSK)</li>
+  <li><strong>DXCC:</strong> looked up from <code>COUNTRY</code> if not specified</li>
   <li><strong>CQ/ITU Zone:</strong> derived from DXCC for single-zone countries, or resolved via state for multi-zone countries</li>
-  <li><strong>Grid square:</strong> calculated from MY_LAT/MY_LON if MY_GRIDSQUARE is missing</li>
-  <li><strong>Special activities:</strong> POTA, SOTA, WWFF, and IOTA references are read from their dedicated fields, or from MY_SIG/MY_SIG_INFO as a fallback</li>
+  <li><strong>Grid square:</strong> calculated from <code>MY_LAT</code>/<code>MY_LON</code> if <code>MY_GRIDSQUARE</code> is missing</li>
+  <li><strong>Special activities:</strong> POTA, SOTA, WWFF, and IOTA references are read from their dedicated fields, or from <code>MY_SIG</code>/<code>MY_SIG_INFO</code> as a fallback</li>
 </ul>
 
 <h3>4. Deduplication</h3>
 
 <p>Duplicate contacts (same stations, same date, same time) are deduplicated both within a single upload and across uploads. Re-uploading a log will update existing contacts rather than create duplicates.</p>
+</div>
 {% endblock %}

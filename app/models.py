@@ -15,6 +15,12 @@ class LogUpload(models.Model):
     processed = models.BooleanField(default=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     upload_time = models.DateTimeField(auto_now_add=True)
+    # The upload this one corrects ("re-upload this log"). The matcher diffs
+    # the two files and deletes contacts the old file asserted that the new
+    # one doesn't.
+    replaces = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="replaced_by"
+    )
 
 
 class CallsignAssociation(models.Model):

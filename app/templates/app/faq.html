@@ -5,6 +5,9 @@
 {% block title %}Frequently Asked Questions{% endblock %}
 
 {% block content %}
+<div class="prose">
+<h1 class="page-title">Frequently asked questions</h1>
+
 <dl>
   <dt>Why do we need another matching service?</dt>
   <dd>
@@ -32,31 +35,7 @@
     <p>If you're a programmer, the source for this website is <a href="https://github.com/radiofun-org/radio-games-website">on GitHub</a>. It's written in Python and Django. The <a href="https://github.com/radiofun-org/fast-adif-matcher">ADIF matcher</a> is written in Go.</p>
 
     <p>If you can help localize this website into another language, please reach out to <a href="mailto:translation@radio.games">translation@radio.games</a>.</p>
-
-    <p>
-      If you want to make a donation to Radiofun, the organization that builds and maintains the Radio Games Matching Service, you can do so using this button:
-
-      <div>
-        <script>
-          var link = document.createElement('link');
-          link.rel="stylesheet"
-          link.href = "https://ribbon-public-bucket.s3.amazonaws.com/donation-embed-v3/ribbon-donation-embed.css";
-          document.head.appendChild(link);
-        </script>
-
-        <div id="app"></div>
-
-        <div class="ribbon-donation-embed-container">
-          <ribbon-donation-embed
-            id="ribbon-donation-embed"
-            form_uuid="chem_epgGzXPz6xHc3sb5"
-            dialog="true"
-          />
-
-          <script type="module" crossorigin src="https://ribbon-public-bucket.s3.amazonaws.com/donation-embed-v3/ribbon-donation-embed.js"></script>
-        </div>
-      </div>
-    </p>
   </dd>
 </dl>
+</div>
 {% endblock %}

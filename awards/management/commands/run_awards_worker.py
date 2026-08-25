@@ -50,6 +50,14 @@ class Command(BaseCommand):
 
             if callsign_ids:
                 self.stdout.write(f"Processing {len(callsign_ids)} callsign IDs")
-                process_pending_batch(callsign_ids)
+                try:
+                    process_pending_batch(callsign_ids)
+                except Exception:
+                    # SPOP already removed the batch; put it back so a
+                    # transient failure (DB down, etc.) doesn't lose the
+                    # evaluations. Re-evaluation is idempotent.
+                    self.stderr.write("Batch failed; requeueing")
+                    r.sadd("awards_eval_pending", *callsign_ids)
+                    time.sleep(POLL_INTERVAL)
 
         self.stdout.write("Awards worker stopped.")

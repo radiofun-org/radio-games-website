@@ -21,6 +21,7 @@ urlpatterns = [
     path("api/", ninja_api.urls),
     path("faq/", views.faq, name="faq"),
     path("how-it-works/", views.how_it_works, name="how-it-works"),
+    path("privacy/", views.privacy, name="privacy"),
     path("oauth/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     path("profile/", views.profile, name="profile"),
     path("profile/api-key/reset/", views.api_key_reset, name="api-key-reset"),

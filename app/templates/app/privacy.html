@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy{% endblock %}
+
+{% block content %}
+<div class="prose">
+<h1 class="page-title">Privacy</h1>
+
+<p>The Radio Games Matching Service exists to match QSOs between operators' logs. It stores what that requires and nothing more. There are no ads, no analytics, no tracking, and your data is never sold.</p>
+
+<h3>What we store</h3>
+
+<ul>
+  <li><strong>Account:</strong> your email address, a hashed password (never the password itself), and your API key.</li>
+  <li><strong>Callsign profile:</strong> the callsigns you register, with the optional name, country, grid square, coordinates, and active date ranges you provide (or fetch via the US callsign lookup).</li>
+  <li><strong>Logs:</strong> the ADIF files you upload and the contacts parsed from them: callsigns worked, dates and times, bands, modes, grids, zones, and activity references such as POTA and SOTA.</li>
+</ul>
+
+<h3>What others can see</h3>
+
+<ul>
+  <li>A registered callsign has a public page showing the callsign, name, country, grid square, and contact/match counts.</li>
+  <li>When a contact is confirmed, the other operator sees the match, including activity references from your side of the QSO.</li>
+</ul>
+
+<h3>Cookies and email</h3>
+
+<p>We set a session cookie to keep you logged in and a CSRF cookie to protect forms. That's all. Email is transactional only: password resets and messages about your account. There is no marketing email.</p>
+
+<h3>Third parties</h3>
+
+<ul>
+  <li><strong>Mailgun</strong> delivers our transactional email, so your address and the message contents pass through it.</li>
+  <li><strong>callook.info</strong> receives the callsign (nothing else) when you use the US callsign lookup.</li>
+  <li>Pages load Bootstrap from <strong>jsDelivr</strong> and fonts from <strong>Google Fonts</strong>, so your browser makes requests to those CDNs, which see your IP address as with any web request.</li>
+</ul>
+
+<h3>Deleting your data</h3>
+
+<p>The <em>Delete account</em> button on your profile erases your account, your uploaded files, your contacts, and the confirmations they created. Other operators keep their own log entries, which may name your callsign; a QSO in someone else's log is their record of their own activity, just as it would be in a paper logbook.</p>
+
+<h3>Exporting your data</h3>
+
+<p>Your confirmed matches are available as ADIF through the <a href="{% url 'api-docs' %}">API</a> at any time.</p>
+
+<h3>Questions</h3>
+
+<p>For privacy questions or data requests, including rights under the GDPR or similar laws, email <a href="mailto:privacy@radio.games">privacy@radio.games</a>. The service is <a href="https://github.com/radiofun-org/">open source</a>, so you can also read exactly what the code does with your data.</p>
+</div>
+{% endblock %}

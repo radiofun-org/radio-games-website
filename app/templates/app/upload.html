@@ -12,8 +12,17 @@
     {% endfor %}
   {% endif %}
 
+  {% if replaces %}
+  <div class="alert alert-info">
+    Re-uploading <strong>{{ replaces.log_file.name|cut:"uploads/" }}</strong>
+    ({{ replaces.callsign }}). The new file replaces it: contacts that were in
+    the old file but aren't in the new one will be removed.
+  </div>
+  {% endif %}
+
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
+    {% if replaces %}<input type="hidden" name="replaces" value="{{ replaces.pk }}">{% endif %}
 
     {% if form.errors %}
       <div class="alert alert-danger">
@@ -52,6 +61,7 @@
         <th>File</th>
         <th>Uploaded</th>
         <th>Status</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -65,6 +75,10 @@
           {% else %}
             <span class="badge bg-warning text-dark">Pending</span>
           {% endif %}
+        </td>
+        <td>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'upload' %}?reupload={{ upload.pk }}"
+             title="Upload a corrected version of this log">Re-upload</a>
         </td>
       </tr>
       {% endfor %}

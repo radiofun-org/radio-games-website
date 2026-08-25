@@ -1,8 +1,6 @@
 from datetime import datetime, UTC
 
 import httpx
-import redis
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -28,6 +26,7 @@ from oauth2_provider.models import Application
 
 from .forms import LoginForm, LogUploadForm, SignUpForm
 from .models import CallsignAssociation, LogUpload, generate_api_key
+from .redis_client import client as redis_client
 
 BACKEND = "django.contrib.auth.backends.ModelBackend"
 
@@ -80,27 +79,50 @@ def how_it_works(request):
     return render(request, "app/how-it-works.html")
 
 
+def privacy(request):
+    return render(request, "app/privacy.html")
+
+
 @login_required()
 def upload(request):
+    # A re-upload corrects a specific earlier upload; the callsign is locked
+    # to the original's so the matcher can diff the two files.
+    replaces = None
+    replaces_id = request.POST.get("replaces") or request.GET.get("reupload")
+    if replaces_id:
+        replaces = LogUpload.objects.filter(pk=replaces_id, user=request.user).first()
+        if not replaces:
+            messages.error(request, "The log to re-upload was not found.")
+            return redirect("upload")
+
     if request.method == "POST":
-        form = LogUploadForm(request.POST, request.FILES, user=request.user)
+        data = request.POST
+        if replaces:
+            data = request.POST.copy()
+            data["callsign"] = replaces.callsign
+        form = LogUploadForm(data, request.FILES, user=request.user)
         if form.is_valid():
             log_upload = LogUpload(
                 log_file=form.cleaned_data["log_file"],
                 callsign=form.cleaned_data["callsign"],
                 user=request.user,
+                replaces=replaces,
             )
             log_upload.save()
 
-            r = redis.from_url(settings.REDIS_URL)
-            r.lpush("log_upload_queue", log_upload.pk)
+            redis_client.lpush("log_upload_queue", log_upload.pk)
 
             messages.success(request, "Log uploaded successfully! It will be processed shortly.")
             return redirect("upload")
     else:
-        form = LogUploadForm(user=request.user)
+        initial = {"callsign": replaces.callsign} if replaces else None
+        form = LogUploadForm(user=request.user, initial=initial)
     recent_uploads = LogUpload.objects.filter(user=request.user).order_by("-upload_time")[:10]
-    return render(request, "app/upload.html", {"form": form, "recent_uploads": recent_uploads})
+    return render(
+        request,
+        "app/upload.html",
+        {"form": form, "recent_uploads": recent_uploads, "replaces": replaces},
+    )
 
 
 @login_required()
@@ -166,9 +188,50 @@ def profile(request):
 @login_required()  # ty: ignore[invalid-argument-type]
 @require_POST  # ty: ignore[invalid-argument-type]
 def account_delete(request) -> HttpResponseRedirect:
+    """Erase the account and the data it provided (GDPR right to erasure).
+
+    Deletes the user's uploads (rows and files), their matcher contacts, and
+    the matches those contacts made, then queues the counterparties for award
+    re-evaluation: their confirmations changed, though grants they already
+    earned stand. Counterparties' own log entries and the bare callsign rows
+    stay — a QSO in someone else's log is that operator's record.
+    """
     user = request.user
-    logout(request)
-    user.delete()
+
+    user_calls = list(
+        CallsignAssociation.objects.filter(user=user).values_list("callsign", flat=True)
+    )
+    matcher_ids = list(
+        Callsign.objects.filter(callsign__in=user_calls).values_list("id", flat=True)
+    )
+
+    affected: set[int] = set()
+    with transaction.atomic():
+        contact_ids = list(
+            Contact.objects.filter(from_id__in=matcher_ids).values_list("id", flat=True)
+        )
+        if contact_ids:
+            match_qs = Match.objects.filter(Q(a_id__in=contact_ids) | Q(b_id__in=contact_ids))
+            for a_call_id, b_call_id in match_qs.values_list("a_call_id", "b_call_id"):
+                affected.add(a_call_id)
+                affected.add(b_call_id)
+            match_qs.delete()
+            Contact.objects.filter(id__in=contact_ids).delete()
+
+        # FileField files aren't removed by row deletion; delete them
+        # explicitly before the user cascade removes the rows.
+        for log_upload in LogUpload.objects.filter(user=user):
+            log_upload.log_file.delete(save=False)
+
+        logout(request)
+        user.delete()
+
+    # Only counterparties need re-evaluation; the deleted user's callsigns
+    # no longer resolve to anyone.
+    affected -= set(matcher_ids)
+    if affected:
+        redis_client.sadd("awards_eval_pending", *affected)
+
     return redirect("index")
 
 

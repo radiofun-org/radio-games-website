@@ -1,0 +1,100 @@
+/* radio.games site styles — loaded after Bootstrap, overrides its CSS variables.
+   Palette: chassis ink + dial-lamp amber on a white panel. */
+
+:root {
+  --rg-ink: #1d1c1a;
+  --rg-ink-hover: #000000;
+  --rg-amber: #b45309;
+  --rg-amber-dark: #8a3e08;
+
+  --bs-body-font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --bs-font-monospace: "IBM Plex Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bs-link-color: var(--rg-amber);
+  --bs-link-color-rgb: 180, 83, 9;
+  --bs-link-hover-color: var(--rg-amber-dark);
+  --bs-link-hover-color-rgb: 138, 62, 8;
+
+  --bs-body-color: var(--rg-ink);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.display-4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--rg-ink);
+  --bs-btn-border-color: var(--rg-ink);
+  --bs-btn-hover-bg: var(--rg-ink-hover);
+  --bs-btn-hover-border-color: var(--rg-ink-hover);
+  --bs-btn-active-bg: var(--rg-ink-hover);
+  --bs-btn-active-border-color: var(--rg-ink-hover);
+  --bs-btn-focus-shadow-rgb: 180, 83, 9;
+}
+
+.navbar-brand {
+  font-family: var(--bs-font-monospace);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+code,
+kbd {
+  font-family: var(--bs-font-monospace);
+  color: var(--rg-ink);
+  background: rgba(180, 83, 9, 0.08);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.3em;
+}
+
+/* Readable column for info pages (FAQ, About, How It Works). */
+.prose {
+  max-width: 44rem;
+  margin-inline: auto;
+  padding-block: 2.5rem;
+}
+
+.prose dt {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 2rem;
+}
+
+.prose dd {
+  margin-left: 0;
+  margin-top: 0.5rem;
+}
+
+.prose h3,
+.prose h4 {
+  margin-top: 2rem;
+}
+
+/* Page title with a morse "CQ" (calling anyone) flourish. */
+.page-title {
+  margin-bottom: 2rem;
+}
+
+.page-title::after {
+  content: "\2212\B7\2212\B7\20\2212\2212\B7\2212";
+  content: "\2212\B7\2212\B7\20\2212\2212\B7\2212" / "";
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--bs-font-monospace);
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  color: var(--rg-amber);
+}
+
+footer {
+  font-family: var(--bs-font-monospace);
+  font-size: 0.85rem;
+}

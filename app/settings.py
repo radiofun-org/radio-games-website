@@ -12,8 +12,8 @@ IS_PRODUCTION = os.getenv("ENV") == "production"
 
 DEBUG = env_to_bool("DEBUG") and not IS_PRODUCTION
 
-# if IS_PRODUCTION:
-#     SECURE_HSTS_SECONDS = 3600
+if IS_PRODUCTION:
+    SECURE_HSTS_SECONDS = 3600
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
@@ -23,9 +23,12 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# Sessions read from the Redis cache but are backed by the database, so a
+# Redis restart or eviction doesn't log everyone out.
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 
-ALLOWED_HOSTS = ["*"]
+# 127.0.0.1 is for the container healthcheck.
+ALLOWED_HOSTS = ["radio.games", "127.0.0.1"] if IS_PRODUCTION else ["*"]
 
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
@@ -117,6 +120,10 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "static-files"
 
 MEDIA_ROOT = BASE_DIR / "uploads"
+
+# Maximum accepted ADIF upload size (web form and API). The matcher parses
+# the whole file into memory, so this cap bounds its memory use per upload.
+MAX_LOG_FILE_SIZE = 100 * 1024 * 1024
 
 STORAGES = {
     "default": {

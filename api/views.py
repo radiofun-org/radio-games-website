@@ -1,17 +1,17 @@
-import gzip
+import zlib
 from datetime import datetime
 
-import redis
-from django.conf import settings
 from django.db.models import OuterRef, Q, Subquery, TextField, Value
 from django.db.models.functions import Coalesce
-from django.http import HttpResponse
+from django.http import StreamingHttpResponse
 from ninja import File, NinjaAPI, Schema, Status
 from ninja.files import UploadedFile
 from ninja.pagination import CursorPagination, paginate
 from ninja.security import APIKeyHeader
 
+from app.forms import log_file_error
 from app.models import AuthUser, CallsignAssociation, LogUpload
+from app.redis_client import client as redis_client
 from contacts.decode import decode_band, decode_date, decode_grid, decode_mode, decode_time
 from contacts.models import Callsign, Contact, Match
 
@@ -80,16 +80,38 @@ def callsign_lookup(request, call: str):
 
 
 @api.post("/upload/", response={201: UploadOut}, auth=ApiKeyAuth())
-def log_upload(request, callsign: str, log_file: File[UploadedFile]):
+def log_upload(request, callsign: str, log_file: File[UploadedFile], replaces: int | None = None):
     """Upload an ADIF log file for matching. The callsign must already be
-    in your profile. The file is queued for processing by the matcher."""
+    in your profile. The file is queued for processing by the matcher.
+
+    Pass `replaces` (a previous upload's id, same callsign) to mark this as a
+    corrected re-upload of that log: contacts present in the old file but
+    absent from the new one are treated as corrections and deleted."""
     user = request.auth
     cs = CallsignAssociation.objects.filter(user=user, callsign=callsign.upper()).first()
     if not cs:
         return api.create_response(request, {"detail": "Callsign not in your profile"}, status=400)
-    upload = LogUpload.objects.create(log_file=log_file, callsign=cs.callsign, user=user)
-    r = redis.from_url(settings.REDIS_URL)
-    r.lpush("log_upload_queue", upload.pk)
+    if error := log_file_error(log_file):
+        return api.create_response(request, {"detail": error}, status=400)
+
+    replaces_upload = None
+    if replaces is not None:
+        replaces_upload = LogUpload.objects.filter(pk=replaces, user=user).first()
+        if not replaces_upload:
+            return api.create_response(
+                request, {"detail": "Upload to replace not found"}, status=400
+            )
+        if replaces_upload.callsign != cs.callsign:
+            return api.create_response(
+                request,
+                {"detail": "The replaced upload is for a different callsign"},
+                status=400,
+            )
+
+    upload = LogUpload.objects.create(
+        log_file=log_file, callsign=cs.callsign, user=user, replaces=replaces_upload
+    )
+    redis_client.lpush("log_upload_queue", upload.pk)
     return Status(201, UploadOut(id=upload.pk, callsign=cs.callsign))
 
 
@@ -144,6 +166,40 @@ def _contact_to_adif(contact: Contact, callsign_map: dict[int, str]) -> str:
     return "".join(f for f in fields if f)
 
 
+ADIF_HEADER = "ADIF export from radio.games\n<ADIF_VER:5>3.1.5\n<PROGRAMID:10>radio.games\n<EOH>\n"
+ADIF_EXPORT_CHUNK = 1000
+
+
+def _adif_chunk(matches: list[Match], matcher_id_set: set[int]) -> str:
+    """Render one batch of matches as ADIF records.
+
+    For each match, "our" contact is the side whose call ID belongs to the
+    requesting user (both sides, if the user worked themselves)."""
+    our_contact_ids = set()
+    for m in matches:
+        if m.a_call_id in matcher_id_set:
+            our_contact_ids.add(m.a_id)
+        if m.b_call_id in matcher_id_set:
+            our_contact_ids.add(m.b_id)
+
+    contacts_map = {c.id: c for c in Contact.objects.filter(id__in=our_contact_ids)}
+
+    all_cs_ids = set()
+    for c in contacts_map.values():
+        all_cs_ids.add(c.from_id)
+        all_cs_ids.add(c.to_id)
+    callsign_map = dict(Callsign.objects.filter(id__in=all_cs_ids).values_list("id", "callsign"))
+
+    records = []
+    for m in matches:
+        if m.a_call_id in matcher_id_set and m.a_id in contacts_map:
+            records.append(_contact_to_adif(contacts_map[m.a_id], callsign_map))
+        if m.b_call_id in matcher_id_set and m.b_id in contacts_map:
+            records.append(_contact_to_adif(contacts_map[m.b_id], callsign_map))
+
+    return "\n".join(records) + "\n" if records else ""
+
+
 @api.get("/matches/adif", auth=ApiKeyAuth(), include_in_schema=True)
 def matches_adif(request, since: int = 0):
     """Export confirmed matches as ADIF. Returns gzipped ADIF data.
@@ -155,68 +211,39 @@ def matches_adif(request, since: int = 0):
     user_callsigns = list(
         CallsignAssociation.objects.filter(user=user).values_list("callsign", flat=True)
     )
-    if not user_callsigns:
-        return HttpResponse(
-            gzip.compress(b""),
-            content_type="application/gzip",
-            headers={"Content-Encoding": "gzip"},
-        )
-
-    matcher_ids = list(
-        Callsign.objects.filter(callsign__in=user_callsigns).values_list("id", flat=True)
+    matcher_ids = (
+        list(Callsign.objects.filter(callsign__in=user_callsigns).values_list("id", flat=True))
+        if user_callsigns
+        else []
     )
-    if not matcher_ids:
-        return HttpResponse(
-            gzip.compress(b""),
-            content_type="application/gzip",
-            headers={"Content-Encoding": "gzip"},
-        )
-
-    matches_qs = Match.objects.filter(Q(a_call_id__in=matcher_ids) | Q(b_call_id__in=matcher_ids))
-    if since:
-        matches_qs = matches_qs.filter(matched_at__gt=since)
-    matches = list(matches_qs.order_by("matched_at"))
-
-    if not matches:
-        return HttpResponse(
-            gzip.compress(b""),
-            content_type="application/gzip",
-            headers={"Content-Encoding": "gzip"},
-        )
-
-    # Determine which contact ID is "ours" vs the other station
-    # For each match: if a_call_id is ours, our contact is a_id; otherwise b_id
     matcher_id_set = set(matcher_ids)
-    our_contact_ids = set()
-    for m in matches:
-        if m.a_call_id in matcher_id_set:
-            our_contact_ids.add(m.a_id)
-        if m.b_call_id in matcher_id_set:
-            our_contact_ids.add(m.b_id)
 
-    contacts_map = {c.id: c for c in Contact.objects.filter(id__in=our_contact_ids)}
+    def stream():
+        # wbits=31 makes zlib emit a gzip container, so the streamed chunks
+        # concatenate into one valid gzip file.
+        comp = zlib.compressobj(wbits=31)
+        yield comp.compress(ADIF_HEADER.encode())
 
-    # Resolve callsign IDs
-    all_cs_ids = set()
-    for c in contacts_map.values():
-        all_cs_ids.add(c.from_id)
-        all_cs_ids.add(c.to_id)
-    callsign_map = dict(Callsign.objects.filter(id__in=all_cs_ids).values_list("id", "callsign"))
+        if matcher_ids:
+            matches_qs = Match.objects.filter(
+                Q(a_call_id__in=matcher_ids) | Q(b_call_id__in=matcher_ids)
+            )
+            if since:
+                matches_qs = matches_qs.filter(matched_at__gt=since)
 
-    # Build ADIF
-    header = "ADIF export from radio.games\n<ADIF_VER:5>3.1.5\n<PROGRAMID:10>radio.games\n<EOH>\n"
-    records = []
-    for m in matches:
-        if m.a_call_id in matcher_id_set and m.a_id in contacts_map:
-            records.append(_contact_to_adif(contacts_map[m.a_id], callsign_map))
-        if m.b_call_id in matcher_id_set and m.b_id in contacts_map:
-            records.append(_contact_to_adif(contacts_map[m.b_id], callsign_map))
+            batch: list[Match] = []
+            for m in matches_qs.order_by("matched_at").iterator(chunk_size=ADIF_EXPORT_CHUNK):
+                batch.append(m)
+                if len(batch) >= ADIF_EXPORT_CHUNK:
+                    yield comp.compress(_adif_chunk(batch, matcher_id_set).encode())
+                    batch = []
+            if batch:
+                yield comp.compress(_adif_chunk(batch, matcher_id_set).encode())
 
-    adif_body = header + "\n".join(records) + "\n"
-    compressed = gzip.compress(adif_body.encode())
+        yield comp.flush()
 
-    return HttpResponse(
-        compressed,
+    return StreamingHttpResponse(
+        stream(),
         content_type="application/gzip",
         headers={
             "Content-Encoding": "gzip",

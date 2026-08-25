@@ -1,8 +1,11 @@
+import gzip
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
 from app.models import AuthUser, CallsignAssociation, LogUpload
+from contacts.models import Callsign, Contact, Match
 
 
 @pytest.fixture()
@@ -65,8 +68,6 @@ def test_matches_empty(api_client):
 
 
 def test_matches_returns_data(api_client):
-    from contacts.models import Callsign, Match
-
     client, api_key = api_client
     user = AuthUser.objects.get(username="testuser")
     CallsignAssociation.objects.create(callsign="W1AW", user=user, name="ARRL")
@@ -91,8 +92,6 @@ def test_matches_returns_data(api_client):
 
 
 def test_matches_cursor_pagination(api_client):
-    from contacts.models import Callsign, Match
-
     client, api_key = api_client
     user = AuthUser.objects.get(username="testuser")
     CallsignAssociation.objects.create(callsign="W1AW", user=user)
@@ -140,3 +139,143 @@ def test_upload_success(api_client):
     data = resp.json()
     assert data["callsign"] == "W1AW"
     assert LogUpload.objects.filter(id=data["id"], callsign="W1AW", user=user).exists()
+
+
+def test_upload_rejects_oversized_file(api_client, settings):
+    settings.MAX_LOG_FILE_SIZE = 100
+    client, api_key = api_client
+    user = AuthUser.objects.get(username="testuser")
+    CallsignAssociation.objects.create(callsign="W1AW", user=user)
+
+    adif = SimpleUploadedFile("big.adi", b"x" * 101)
+    resp = client.post("/api/upload/?callsign=W1AW", {"log_file": adif}, HTTP_X_API_KEY=api_key)
+    assert resp.status_code == 400
+    assert "too large" in resp.json()["detail"]
+
+
+def test_upload_rejects_bad_extension(api_client):
+    client, api_key = api_client
+    user = AuthUser.objects.get(username="testuser")
+    CallsignAssociation.objects.create(callsign="W1AW", user=user)
+
+    txt = SimpleUploadedFile("notes.txt", b"not adif")
+    resp = client.post("/api/upload/?callsign=W1AW", {"log_file": txt}, HTTP_X_API_KEY=api_key)
+    assert resp.status_code == 400
+
+
+def test_matches_adif_export(api_client):
+    client, api_key = api_client
+    user = AuthUser.objects.get(username="testuser")
+    CallsignAssociation.objects.create(callsign="W1AW", user=user)
+
+    me = Callsign.objects.create(callsign="W1AW")
+    them = Callsign.objects.create(callsign="K3LR")
+
+    my_contact = Contact.objects.create(
+        date=27000,
+        time=600,
+        time_off=0,
+        from_id=me.id,
+        to_id=them.id,
+        band=8,
+        mode=29,
+        sub_mode=0,
+        grid=0,
+        grid_size=0,
+        dxcc=291,
+        zone_cq=0,
+        zone_itu=0,
+        tx_power=0,
+    )
+    their_contact = Contact.objects.create(
+        date=27000,
+        time=601,
+        time_off=0,
+        from_id=them.id,
+        to_id=me.id,
+        band=8,
+        mode=29,
+        sub_mode=0,
+        grid=0,
+        grid_size=0,
+        dxcc=291,
+        zone_cq=0,
+        zone_itu=0,
+        tx_power=0,
+    )
+    Match.objects.create(
+        matched_at=1700000000,
+        a_id=my_contact.id,
+        b_id=their_contact.id,
+        a_call_id=me.id,
+        b_call_id=them.id,
+    )
+
+    resp = client.get("/api/matches/adif", HTTP_X_API_KEY=api_key)
+    assert resp.status_code == 200
+    body = gzip.decompress(b"".join(resp.streaming_content if resp.streaming else [resp.content]))
+    text = body.decode()
+    assert "<EOH>" in text
+    assert "<CALL:4>K3LR" in text
+    assert "<STATION_CALLSIGN:4>W1AW" in text
+    assert "<EOR>" in text
+
+    # since filter excludes older matches
+    resp = client.get("/api/matches/adif?since=1700000001", HTTP_X_API_KEY=api_key)
+    body = gzip.decompress(b"".join(resp.streaming_content if resp.streaming else [resp.content]))
+    assert "<EOR>" not in body.decode()
+
+
+def test_upload_replaces(api_client):
+    client, api_key = api_client
+    user = AuthUser.objects.get(username="testuser")
+    CallsignAssociation.objects.create(callsign="W1AW", user=user)
+    original = LogUpload.objects.create(
+        log_file=SimpleUploadedFile("orig.adi", b"<EOH>\n"), callsign="W1AW", user=user
+    )
+
+    adif = SimpleUploadedFile("fixed.adi", b"<EOH>\n")
+    resp = client.post(
+        f"/api/upload/?callsign=W1AW&replaces={original.pk}",
+        {"log_file": adif},
+        HTTP_X_API_KEY=api_key,
+    )
+    assert resp.status_code == 201
+    new = LogUpload.objects.get(pk=resp.json()["id"])
+    assert new.replaces == original
+
+
+def test_upload_replaces_rejects_other_users_upload(api_client):
+    client, api_key = api_client
+    user = AuthUser.objects.get(username="testuser")
+    CallsignAssociation.objects.create(callsign="W1AW", user=user)
+    other = AuthUser.objects.create_user(username="other2", password="testpass123")
+    theirs = LogUpload.objects.create(
+        log_file=SimpleUploadedFile("theirs.adi", b"<EOH>\n"), callsign="VE3XYZ", user=other
+    )
+
+    adif = SimpleUploadedFile("fixed.adi", b"<EOH>\n")
+    resp = client.post(
+        f"/api/upload/?callsign=W1AW&replaces={theirs.pk}",
+        {"log_file": adif},
+        HTTP_X_API_KEY=api_key,
+    )
+    assert resp.status_code == 400
+
+
+def test_upload_replaces_rejects_callsign_mismatch(api_client):
+    client, api_key = api_client
+    user = AuthUser.objects.get(username="testuser")
+    CallsignAssociation.objects.create(callsign="W1AW", user=user)
+    CallsignAssociation.objects.create(callsign="W1AW/P", user=user)
+    original = LogUpload.objects.create(
+        log_file=SimpleUploadedFile("orig.adi", b"<EOH>\n"), callsign="W1AW/P", user=user
+    )
+
+    adif = SimpleUploadedFile("fixed.adi", b"<EOH>\n")
+    resp = client.post(
+        f"/api/upload/?callsign=W1AW&replaces={original.pk}",
+        {"log_file": adif},
+        HTTP_X_API_KEY=api_key,
+    )
+    assert resp.status_code == 400

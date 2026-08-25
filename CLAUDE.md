@@ -27,7 +27,7 @@ Open-source amateur radio QSO matching service (like LoTW/Club Log but fully ope
 
 - **`AuthUser`** — extends `AbstractUser`, adds `api_key` (64-char hex). Uses `db_table = "auth_user"`.
 - **`CallsignAssociation`** — links callsigns to users with metadata (name, country, grid, lat/lon, date range). Unique on `(callsign, user)`.
-- **`LogUpload`** — uploaded ADIF file + callsign + processed flag.
+- **`LogUpload`** — uploaded ADIF file + callsign + processed flag. `replaces` links a corrected re-upload to the upload it supersedes; the matcher diffs the two files and deletes contacts (and their matches) that only the old file asserted.
 - **`Callsign`** — maps callsign strings to integer IDs (`matcher_callsign`). Written by the Go matcher, used by Django to decode `from_id`/`to_id` on contacts.
 - **`AdifMetadata`** — ADIF file metadata (hash, version, program) (`matcher_adif_metadata`).
 - **`Contact`** / **`Match`** — owned by the Go matcher (`matcher_contact`, `matcher_match`). `Contact` fields are integer-encoded ADIF data; `contacts/decode.py` has the reverse maps. `Match` pairs two contact IDs. Both use `BigIntegerField` for IDs, not Django ForeignKeys.
@@ -98,6 +98,7 @@ pytest + pytest-django. Test settings (`app/test_settings.py`) swap Redis cache 
 - `contacts` models use integer-encoded fields (band, mode, callsign IDs) — the Go matcher encodes, `contacts/decode.py` decodes
 - `Match.a_call_id`/`b_call_id` reference `Callsign.id` (NOT `CallsignAssociation.id`) — resolve via callsign string
 - Uploads go to `uploads/` (mounted volume shared with matcher container)
+- Account deletion erases the user's uploads (rows + files), matcher contacts, and their matches, then queues counterparty callsigns for award re-evaluation; counterparties' own log entries, bare `matcher_callsign` rows, and already-granted awards stay
 - Production uses `/venv/bin/uvicorn` directly to avoid uv memory overhead
 
 ## Awards pipeline
