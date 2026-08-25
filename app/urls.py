@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 from api.views import api as ninja_api
 
@@ -9,7 +10,7 @@ from .forms import EmailAuthenticationForm
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("about/", views.about, name="about"),
+    path("about/", RedirectView.as_view(pattern_name="how-it-works", permanent=True)),
     path(
         "accounts/login/",
         auth_views.LoginView.as_view(authentication_form=EmailAuthenticationForm),
@@ -19,7 +20,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/docs", views.api_docs, name="api-docs"),
     path("api/", ninja_api.urls),
-    path("faq/", views.faq, name="faq"),
+    path("faq/", RedirectView.as_view(pattern_name="how-it-works", permanent=True)),
     path("how-it-works/", views.how_it_works, name="how-it-works"),
     path("privacy/", views.privacy, name="privacy"),
     path("oauth/", include("oauth2_provider.urls", namespace="oauth2_provider")),

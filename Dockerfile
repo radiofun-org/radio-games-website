@@ -64,7 +64,7 @@ RUN apt-get update \
 
 COPY . /app/
 
-# Mark port 8000 as being exposed (useful for orchestration).
-EXPOSE 8000
+# Mark port 7373 as being exposed (useful for orchestration).
+EXPOSE 7373
 
 CMD ["./serve.sh"]

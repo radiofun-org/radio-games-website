@@ -1,10 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}How It Works{% endblock %}
+{% block title %}What is RGMS?{% endblock %}
 
 {% block content %}
 <div class="prose">
-<h1 class="page-title">How it works</h1>
+<h1 class="page-title">What is RGMS?</h1>
+
+<p>
+  The Radio Games Matching Service is a radio contact matching service like LoTW, Club Log, and QRZ. In contrast to those services, RGMS is completely open source and community supported.
+</p>
+
+<nav class="toc" aria-label="On this page">
+  <a href="#how-it-works">How it works</a>
+  <a href="#faq">Frequently asked questions</a>
+</nav>
+
+<h2 id="how-it-works">How it works</h2>
 
 <p>
   RGMS matches contacts when both parties upload their logs in ADIF format. The matching is deterministic: a contact either matches or it doesn't, there's no scoring or probability involved.
@@ -50,5 +61,27 @@
 <h3>4. Deduplication</h3>
 
 <p>Duplicate contacts (same stations, same date, same time) are deduplicated both within a single upload and across uploads. Re-uploading a log will update existing contacts rather than create duplicates.</p>
+
+<h2 id="faq">Frequently asked questions</h2>
+
+<dl>
+  <dt>Why do we need another matching service?</dt>
+  <dd>
+    <p>LoTW, QRZ, Club Log, and eQSL all match contacts, and each works well for the operators it was built for. RGMS differs from them in two ways.</p>
+
+    <p><strong>The code is open.</strong> None of the existing services publish their source code, so improvements can only come from inside. RGMS is fully open source and community supported.</p>
+
+    <p><strong>The awards are open.</strong> Where the existing services offer awards, they are a single organization's own program: LoTW confirmations serve DXCC and the ARRL's other awards, and QRZ's matches feed QRZ's award program. RGMS confirmations are available to anyone: a club, group, or individual can work with us to define awards and have them evaluated automatically against every matched contact.</p>
+
+    <p>There's also room to serve operators outside the US better. LoTW's interface is English-only and its documentation is only partly translated, which limits its use elsewhere. RGMS is built for localization from the start.</p>
+  </dd>
+
+  <dt>How can I help?</dt>
+  <dd>
+    <p>If you're a programmer, the source for this website is <a href="https://github.com/radiofun-org/radio-games-website">on GitHub</a>. It's written in Python and Django. The <a href="https://github.com/radiofun-org/fast-adif-matcher">ADIF matcher</a> is written in Go.</p>
+
+    <p>If you can help localize this website into another language, please reach out to <a href="mailto:translation@radio.games">translation@radio.games</a>.</p>
+  </dd>
+</dl>
 </div>
 {% endblock %}

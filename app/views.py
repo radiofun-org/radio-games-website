@@ -67,14 +67,6 @@ def api_docs(request):
     return render(request, "app/api_docs.html")
 
 
-def about(request):
-    return render(request, "app/about.html")
-
-
-def faq(request):
-    return render(request, "app/faq.html")
-
-
 def how_it_works(request):
     return render(request, "app/how-it-works.html")
 

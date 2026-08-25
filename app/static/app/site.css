@@ -73,9 +73,28 @@ kbd {
   margin-top: 0.5rem;
 }
 
+.prose h2 {
+  margin-top: 2.5rem;
+  scroll-margin-top: 1rem;
+}
+
 .prose h3,
 .prose h4 {
   margin-top: 2rem;
+}
+
+/* Small in-page table of contents, styled like the footer. */
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  font-family: var(--bs-font-monospace);
+  font-size: 0.85rem;
+}
+
+.toc a::before {
+  content: "\2192\20";
+  color: var(--rg-amber);
 }
 
 /* Page title with a morse "CQ" (calling anyone) flourish. */
@@ -225,4 +244,11 @@ footer {
 
 #swagger-ui .swagger-ui section.models {
   border-color: rgba(29, 28, 26, 0.15);
+}
+
+.footer-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  margin-inline-start: 0.25em;
 }
