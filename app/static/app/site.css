@@ -98,3 +98,131 @@ footer {
   font-family: var(--bs-font-monospace);
   font-size: 0.85rem;
 }
+
+/* Swagger UI on the API docs page. The #swagger-ui prefix outranks Swagger's own
+   .swagger-ui rules, which set their own sans-serif/monospace stacks and green/blue buttons. */
+.api-docs-intro {
+  padding-block-end: 0;
+}
+
+#swagger-ui .swagger-ui,
+#swagger-ui .swagger-ui *:not(code, pre, textarea, .microlight, .curl, .opblock-summary-path,
+    .opblock-summary-path__deprecated, .prop-type, .prop-format, .parameter__name,
+    .parameter__type, .parameter__in, .response-col_status, .property, .model-title) {
+  font-family: var(--bs-body-font-family);
+}
+
+#swagger-ui .swagger-ui,
+#swagger-ui .swagger-ui .opblock-tag,
+#swagger-ui .swagger-ui .opblock .opblock-summary-description,
+#swagger-ui .swagger-ui .opblock .opblock-section-header h4,
+#swagger-ui .swagger-ui .parameter__name,
+#swagger-ui .swagger-ui .response-col_status,
+#swagger-ui .swagger-ui .model-title,
+#swagger-ui .swagger-ui table thead tr th,
+#swagger-ui .swagger-ui .responses-inner h4,
+#swagger-ui .swagger-ui .responses-inner h5 {
+  color: var(--rg-ink);
+}
+
+#swagger-ui .swagger-ui code,
+#swagger-ui .swagger-ui pre,
+#swagger-ui .swagger-ui textarea,
+#swagger-ui .swagger-ui .microlight,
+#swagger-ui .swagger-ui .curl,
+#swagger-ui .swagger-ui .opblock-summary-path,
+#swagger-ui .swagger-ui .opblock-summary-path__deprecated,
+#swagger-ui .swagger-ui .prop-type,
+#swagger-ui .swagger-ui .prop-format,
+#swagger-ui .swagger-ui .parameter__name,
+#swagger-ui .swagger-ui .parameter__type,
+#swagger-ui .swagger-ui .parameter__in,
+#swagger-ui .swagger-ui .response-col_status,
+#swagger-ui .swagger-ui .property,
+#swagger-ui .swagger-ui .model-title {
+  font-family: var(--bs-font-monospace);
+}
+
+/* Swagger's highlighted code blocks keep their own dark theme; inline code in
+   descriptions matches the site's code style. */
+#swagger-ui .swagger-ui pre,
+#swagger-ui .swagger-ui pre code {
+  background: transparent;
+  padding: 0;
+}
+
+#swagger-ui .swagger-ui .markdown code,
+#swagger-ui .swagger-ui .renderedMarkdown code {
+  color: var(--rg-ink);
+  background: rgba(180, 83, 9, 0.08);
+  padding: 0.1em 0.3em;
+}
+
+#swagger-ui .swagger-ui .info {
+  display: none;
+}
+
+#swagger-ui .swagger-ui .scheme-container {
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 1rem;
+  margin: 0;
+}
+
+#swagger-ui .swagger-ui .wrapper {
+  padding: 0;
+}
+
+#swagger-ui .swagger-ui a {
+  color: var(--rg-amber);
+}
+
+#swagger-ui .swagger-ui a.nostyle {
+  color: inherit;
+}
+
+#swagger-ui .swagger-ui .opblock-tag {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border-bottom-color: rgba(29, 28, 26, 0.15);
+}
+
+#swagger-ui .swagger-ui .btn.authorize,
+#swagger-ui .swagger-ui .btn.execute {
+  background: var(--rg-ink);
+  border-color: var(--rg-ink);
+  color: #fff;
+}
+
+#swagger-ui .swagger-ui .btn.authorize svg,
+#swagger-ui .swagger-ui .btn.authorize svg * {
+  color: #fff;
+  fill: #fff;
+}
+
+/* Per-operation lock icons: amber when a key is set, ink otherwise. */
+#swagger-ui .swagger-ui .authorization__btn svg,
+#swagger-ui .swagger-ui .authorization__btn svg * {
+  color: var(--rg-ink);
+  fill: var(--rg-ink);
+}
+
+#swagger-ui .swagger-ui .authorization__btn.locked svg,
+#swagger-ui .swagger-ui .authorization__btn.locked svg * {
+  color: var(--rg-amber);
+  fill: var(--rg-amber);
+}
+
+#swagger-ui .swagger-ui .btn.cancel {
+  border-color: var(--rg-ink);
+  color: var(--rg-ink);
+}
+
+#swagger-ui .swagger-ui .opblock .opblock-summary-method {
+  font-family: var(--bs-font-monospace);
+  font-weight: 600;
+}
+
+#swagger-ui .swagger-ui section.models {
+  border-color: rgba(29, 28, 26, 0.15);
+}

@@ -5,6 +5,16 @@
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
 
+<div class="prose api-docs-intro">
+<h1 class="page-title">API</h1>
+
+<p>
+  Authenticate with the <code>X-API-Key</code> header. Your key is on your
+  <a href="{% url 'profile' %}">profile page</a>{% if user.is_authenticated %} and is already filled in below, so you can try each endpoint from this page{% endif %}.
+  The raw schema is at <a href="/api/openapi.json"><code>/api/openapi.json</code></a>.
+</p>
+</div>
+
 <div id="swagger-ui"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
