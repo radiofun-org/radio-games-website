@@ -1,7 +1,10 @@
 # Production stack for Coolify (Docker Compose build pack). Postgres and Redis
 # are Coolify standalone databases so they outlive app deploys; DATABASE_URL
 # and REDIS_URL point at them. The uploads volume is shared between web (which
-# writes ADIF files under MEDIA_ROOT) and the matcher (which reads them).
+# writes ADIF files under MEDIA_ROOT) and the matcher (which reads them). The
+# matcher image is built by fast-adif-matcher's GitHub Actions workflow and
+# pulled here; building Go on the VPS alongside the Python images ran it out
+# of memory.
 services:
   web:
     build:
@@ -28,8 +31,7 @@ services:
       - uploads:/app/uploads
 
   matcher:
-    build:
-      context: https://github.com/radiofun-org/fast-adif-matcher.git
+    image: ghcr.io/radiofun-org/fast-adif-matcher:latest
     environment:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
