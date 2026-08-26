@@ -14,6 +14,10 @@ Open-source amateur radio QSO matching service (like LoTW/Club Log but fully ope
 
 `web` (Django) / `matcher` (Go) / `awards-worker` (Django) / `db` (Postgres) / `redis` — all configured via `.env`
 
+## Production (Coolify)
+
+Deployed by Coolify on `coolify.beaugunderson.com` (Hetzner, `ssh coolify`) from `docker-compose.prod.yml` (Docker Compose build pack, app uuid `xkksocw00ocs0wgowcwooogs`, project "radio.games"). The stack is `web`, `matcher` (built from the public `fast-adif-matcher` repo by git URL), and `awards-worker`, sharing a named `uploads` volume. Postgres (`radio-games-db`) and Redis (`radio-games-redis`) are Coolify standalone databases so they survive app deploys; `DATABASE_URL` and `REDIS_URL` in the Coolify env point at them. `ENV=production` must be set there: it turns on HSTS, SSL redirect, `ALLOWED_HOSTS`, and the 4-worker uvicorn. Pushing to `main` deploys. `serve.sh` runs migrations under `set -e`, so a failed migration fails the deploy instead of starting the app; request-error tracebacks go to the container log (`docker logs <web container>` on the host). The Coolify API token is in 1Password (personal account, "Coolify" item, `api token`).
+
 ## Django apps
 
 | App | Purpose |

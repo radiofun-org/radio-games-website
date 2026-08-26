@@ -22,6 +22,10 @@ Services: `web` (Django), `matcher` (Go), `awards-worker`, `db`, `redis`.
 prek run --all-files            # ruff + ty
 ```
 
+## Production
+
+`docker-compose.prod.yml` is the production stack (web, matcher, awards worker, shared uploads volume). Postgres and Redis are provided externally via `DATABASE_URL` and `REDIS_URL`; set `ENV=production`.
+
 ## Layout
 
 - `app/` — auth, callsign management, uploads, profile, info pages
