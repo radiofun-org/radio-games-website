@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 from django.test import Client
 
 from app.models import AuthUser, CallsignAssociation
+from awards.models import AwardDefinition, AwardGrant, AwardProgress
 
 CALLOOK_RESULT = {
     "name": "ARRL HQ OPERATORS CLUB",
@@ -428,3 +429,47 @@ def test_upload_page_with_callsign_shows_form(logged_in, user):
     assert response.status_code == 200
     assert b'id="submit-btn"' in response.content
     assert b"Add your callsign on your profile" not in response.content
+
+
+def test_dashboard_for_new_account_shows_setup_steps(logged_in):
+    response = logged_in.get("/")
+    assert response.status_code == 200
+    assert b"Getting started" in response.content
+    assert b"Add a callsign" in response.content
+    assert b"Confirm your contacts. Chase awards." not in response.content
+
+
+def test_dashboard_shows_earned_and_in_progress_awards(logged_in, user):
+    CallsignAssociation.objects.create(user=user, callsign="N7YHF")
+    earned = AwardDefinition.objects.create(
+        slug="first-contact",
+        name="First Contact",
+        category="test",
+        tier=AwardDefinition.Tier.QUERY,
+        evaluator={},
+    )
+    halfway = AwardDefinition.objects.create(
+        slug="ten-contacts",
+        name="Ten Contacts",
+        category="test",
+        tier=AwardDefinition.Tier.QUERY,
+        evaluator={},
+    )
+    AwardGrant.objects.create(user=user, award=earned)
+    AwardProgress.objects.create(user=user, award=halfway, detail={"count": 5, "needed": 10})
+    AwardProgress.objects.create(user=user, award=earned, detail={"count": 1, "needed": 1})
+
+    response = logged_in.get("/")
+    content = response.content.decode()
+    assert "First Contact" in content
+    assert "Ten Contacts" in content
+    assert "5 / 10" in content
+    assert 'aria-valuenow="50"' in content
+    # an earned award is not also listed as in progress
+    assert content.count("First Contact") == 1
+
+
+def test_profile_no_longer_shows_contact_stats(logged_in):
+    response = logged_in.get("/profile/")
+    assert response.status_code == 200
+    assert b"Contact stats" not in response.content

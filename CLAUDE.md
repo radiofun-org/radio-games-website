@@ -41,8 +41,8 @@ Deployed by Coolify on `coolify.beaugunderson.com` (Hetzner, `ssh coolify`) from
 
 ## URL structure
 
-- `/` — landing page (login + signup in one form, toggled by `form_type`)
-- `/profile/` — dashboard with contact stats (by mode/band/country), callsign CRUD, API key management, account deletion
+- `/` — landing page (login + signup in one form, toggled by `form_type`); logged in, it renders the dashboard instead: getting-started checklist (callsign → upload → first confirmation), stat tiles, earned awards and closest-to-completion progress bars (from `AwardProgress.detail`, `count/needed` or `worked/needed` shapes), recent uploads, contact stats by mode/band/country
+- `/profile/` — account settings: email, password change, callsign CRUD, API key, OAuth apps link, account deletion
 - `/profile/apps/` — OAuth2 application management (create/delete apps)
 - `/logbook/` — user's contacts with confirmed/unconfirmed status, paginated
 - `/upload/` — ADIF file upload with drag-drop and header parsing

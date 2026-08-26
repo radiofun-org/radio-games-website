@@ -22,65 +22,10 @@
         <th scope="row">Member since</th>
         <td>{{ user.date_joined|date:"N j, Y" }}</td>
       </tr>
-      <tr>
-        <th scope="row">Uploads</th>
-        <td>{{ upload_count }}</td>
-      </tr>
-      <tr>
-        <th scope="row">Contacts</th>
-        <td>{{ contact_count }}</td>
-      </tr>
-      <tr>
-        <th scope="row">Matches</th>
-        <td>{{ match_count }}</td>
-      </tr>
     </tbody>
   </table>
 
   <a href="{% url 'password_change' %}" class="btn btn-outline-secondary">Change password</a>
-
-  {% if stats.by_mode or stats.by_band or stats.by_country %}
-  <hr class="my-4">
-  <h4 class="mb-3">Contact stats</h4>
-  <div class="row">
-    {% if stats.by_mode %}
-    <div class="col-md-4 mb-3">
-      <h6>By mode</h6>
-      <table class="table table-sm">
-        <tbody>
-          {% for row in stats.by_mode %}
-          <tr><td>{{ row.label }}</td><td class="text-end">{{ row.count }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-    {% if stats.by_band %}
-    <div class="col-md-4 mb-3">
-      <h6>By band</h6>
-      <table class="table table-sm">
-        <tbody>
-          {% for row in stats.by_band %}
-          <tr><td>{{ row.label }}</td><td class="text-end">{{ row.count }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-    {% if stats.by_country %}
-    <div class="col-md-4 mb-3">
-      <h6>By country</h6>
-      <table class="table table-sm">
-        <tbody>
-          {% for row in stats.by_country %}
-          <tr><td>{{ row.label }}</td><td class="text-end">{{ row.count }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-  </div>
-  {% endif %}
 
   <hr class="my-4">
 

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 900px">
+  <h2 class="mb-4">Dashboard</h2>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if not setup_done %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Getting started</h5>
+      <ol class="list-unstyled mb-0">
+        <li class="mb-2">
+          {% if steps.callsign %}<span class="text-success">&#10003;</span> Callsign added{% else %}<span class="text-secondary">&#9675;</span> <a href="{% url 'profile' %}">Add a callsign</a> so uploads can be tied to you{% endif %}
+        </li>
+        <li class="mb-2">
+          {% if steps.upload %}<span class="text-success">&#10003;</span> Log uploaded{% else %}<span class="text-secondary">&#9675;</span> <a href="{% url 'upload' %}">Upload an ADIF log</a>{% if not steps.callsign %} (after adding a callsign){% endif %}{% endif %}
+        </li>
+        <li>
+          {% if steps.confirmed %}<span class="text-success">&#10003;</span> First contact confirmed{% else %}<span class="text-secondary">&#9675;</span> Wait for a confirmation: a contact matches once the other station uploads their log too{% endif %}
+        </li>
+      </ol>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+    <div class="col">
+      <div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">Contacts</div>
+        <div class="fs-3 fw-semibold"><a href="{% url 'logbook' %}" class="text-decoration-none text-reset">{{ contact_count }}</a></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">Confirmed</div>
+        <div class="fs-3 fw-semibold">{{ match_count }}</div>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">Uploads</div>
+        <div class="fs-3 fw-semibold"><a href="{% url 'upload' %}" class="text-decoration-none text-reset">{{ upload_count }}</a></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">Awards</div>
+        <div class="fs-3 fw-semibold">{{ award_count }}</div>
+      </div></div>
+    </div>
+  </div>
+
+  {% if recent_grants or in_progress %}
+  <h4 class="mb-3">Awards</h4>
+  <div class="row g-4 mb-4">
+    {% if recent_grants %}
+    <div class="col-md-6">
+      <h6 class="text-secondary">Earned</h6>
+      <ul class="list-group list-group-flush">
+        {% for grant in recent_grants %}
+        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+          <span>{% if grant.award.icon %}{{ grant.award.icon }} {% endif %}{{ grant.award.name }}</span>
+          <small class="text-secondary">{{ grant.evidence_at|default:grant.granted_at|date:"M j, Y" }}</small>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if in_progress %}
+    <div class="col-md-6">
+      <h6 class="text-secondary">Closest to completion</h6>
+      {% for item in in_progress %}
+      <div class="mb-3">
+        <div class="d-flex justify-content-between">
+          <span>{% if item.award.icon %}{{ item.award.icon }} {% endif %}{{ item.award.name }}</span>
+          <small class="text-secondary">{{ item.label }}</small>
+        </div>
+        <div class="progress" role="progressbar" aria-label="{{ item.award.name }} progress" aria-valuenow="{{ item.percent }}" aria-valuemin="0" aria-valuemax="100" style="height: 6px">
+          <div class="progress-bar" style="width: {{ item.percent }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if recent_uploads %}
+  <h4 class="mb-3">Recent uploads</h4>
+  <table class="table table-sm mb-4">
+    <thead>
+      <tr><th>File</th><th>Callsign</th><th>Uploaded</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for upload in recent_uploads %}
+      <tr>
+        <td>{{ upload.log_file.name|cut:"uploads/" }}</td>
+        <td>{{ upload.callsign }}</td>
+        <td>{{ upload.upload_time|date:"M j, Y H:i" }}</td>
+        <td>{% if upload.processed %}<span class="text-success">Processed</span>{% else %}<span class="text-secondary">Queued</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if stats.by_mode or stats.by_band or stats.by_country %}
+  <h4 class="mb-3">Contact stats</h4>
+  <div class="row">
+    {% if stats.by_mode %}
+    <div class="col-md-4 mb-3">
+      <h6>By mode</h6>
+      <table class="table table-sm">
+        <tbody>
+          {% for row in stats.by_mode %}
+          <tr><td>{{ row.label }}</td><td class="text-end">{{ row.count }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% if stats.by_band %}
+    <div class="col-md-4 mb-3">
+      <h6>By band</h6>
+      <table class="table table-sm">
+        <tbody>
+          {% for row in stats.by_band %}
+          <tr><td>{{ row.label }}</td><td class="text-end">{{ row.count }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% if stats.by_country %}
+    <div class="col-md-4 mb-3">
+      <h6>By country</h6>
+      <table class="table table-sm">
+        <tbody>
+          {% for row in stats.by_country %}
+          <tr><td>{{ row.label }}</td><td class="text-end">{{ row.count }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

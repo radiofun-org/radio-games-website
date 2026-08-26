@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, UTC
 
 import httpx
@@ -20,6 +21,7 @@ from contacts.decode import (
     decode_mode,
     decode_time,
 )
+from awards.models import AwardDefinition, AwardGrant, AwardProgress
 from contacts.models import Callsign, Contact, Match
 
 from oauth2_provider.models import Application
@@ -31,9 +33,139 @@ from .redis_client import client as redis_client
 BACKEND = "django.contrib.auth.backends.ModelBackend"
 
 
+def _matcher_ids_for(user) -> list[int]:
+    """IDs in the matcher's callsign table for every callsign the user has claimed."""
+    callsigns = list(
+        CallsignAssociation.objects.filter(user=user).values_list("callsign", flat=True)
+    )
+    if not callsigns:
+        return []
+    return list(Callsign.objects.filter(callsign__in=callsigns).values_list("id", flat=True))
+
+
+def _contact_stats(matcher_ids: list[int]) -> dict:
+    """Top modes, bands, and countries across contacts the user logged as the 'from' station."""
+    stats: dict[str, list] = {"by_mode": [], "by_band": [], "by_country": []}
+    if not matcher_ids:
+        return stats
+    user_contacts = Contact.objects.filter(from_id__in=matcher_ids)
+
+    mode_counts = user_contacts.values("mode").annotate(count=Count("id")).order_by("-count")[:15]
+    stats["by_mode"] = [
+        {"label": MODES.get(row["mode"], f"?{row['mode']}"), "count": row["count"]}
+        for row in mode_counts
+    ]
+
+    band_counts = user_contacts.values("band").annotate(count=Count("id")).order_by("-count")[:15]
+    stats["by_band"] = [
+        {"label": BANDS.get(row["band"], f"?{row['band']}"), "count": row["count"]}
+        for row in band_counts
+    ]
+
+    dxcc_counts = (
+        user_contacts.values("dxcc")
+        .annotate(count=Count("id"))
+        .filter(dxcc__gt=0)
+        .order_by("-count")[:15]
+    )
+    stats["by_country"] = [
+        {"label": decode_dxcc(row["dxcc"]), "count": row["count"]} for row in dxcc_counts
+    ]
+    return stats
+
+
+def _award_progress_fraction(detail: dict) -> float | None:
+    """Fraction complete from an AwardProgress.detail; None when the shape has no denominator."""
+    count, needed = detail.get("count"), detail.get("needed")
+    if isinstance(count, int) and isinstance(needed, int) and needed > 0:
+        return min(count / needed, 1.0)
+    worked = detail.get("worked")
+    if isinstance(worked, list) and isinstance(needed, list) and needed:
+        return min(len(worked) / len(needed), 1.0)
+    return None
+
+
+@dataclass
+class AwardProgressItem:
+    award: AwardDefinition
+    fraction: float
+    percent: int
+    label: str
+
+
+def _award_progress_label(detail: dict) -> str:
+    if isinstance(detail.get("needed"), list):
+        return f"{len(detail.get('worked', []))} / {len(detail['needed'])}"
+    return f"{detail.get('count', 0)} / {detail.get('needed', '?')}"
+
+
+def dashboard(request):
+    user = request.user
+    callsign_count = CallsignAssociation.objects.filter(user=user).count()
+    matcher_ids = _matcher_ids_for(user)
+    contact_count = Contact.objects.filter(from_id__in=matcher_ids).count() if matcher_ids else 0
+    match_count = (
+        Match.objects.filter(Q(a_call_id__in=matcher_ids) | Q(b_call_id__in=matcher_ids)).count()
+        if matcher_ids
+        else 0
+    )
+    uploads = LogUpload.objects.filter(user=user).order_by("-upload_time")
+    upload_count = uploads.count()
+
+    grants = list(
+        AwardGrant.objects.filter(user=user, revoked_at__isnull=True)
+        .select_related("award")
+        .order_by("-granted_at")
+    )
+    earned_award_ids = {g.award.pk for g in grants}
+
+    in_progress: list[AwardProgressItem] = []
+    progress_rows = (
+        AwardProgress.objects.filter(user=user, award__enabled=True)
+        .exclude(award__pk__in=earned_award_ids)
+        .select_related("award")
+    )
+    for row in progress_rows:
+        fraction = _award_progress_fraction(row.detail)
+        if not fraction:
+            continue
+        in_progress.append(
+            AwardProgressItem(
+                award=row.award,
+                fraction=fraction,
+                percent=round(fraction * 100),
+                label=_award_progress_label(row.detail),
+            )
+        )
+    in_progress.sort(key=lambda item: -item.fraction)
+
+    steps = {
+        "callsign": callsign_count > 0,
+        "upload": upload_count > 0,
+        "confirmed": match_count > 0,
+    }
+
+    return render(
+        request,
+        "app/dashboard.html",
+        {
+            "steps": steps,
+            "setup_done": all(steps.values()),
+            "contact_count": contact_count,
+            "match_count": match_count,
+            "upload_count": upload_count,
+            "award_count": len(grants),
+            "recent_grants": grants[:6],
+            "in_progress": in_progress[:6],
+            "recent_uploads": uploads[:5],
+            "stats": _contact_stats(matcher_ids),
+        },
+    )
+
+
 def index(request):
     if request.user.is_authenticated:
-        return render(request, "app/index.html")
+        return dashboard(request)
 
     is_login = "login" in request.GET or request.POST.get("form_type") == "login"
     signup_form = SignUpForm()
@@ -129,62 +261,8 @@ def upload(request):
 
 @login_required()
 def profile(request):
-    user = request.user
-    callsigns = CallsignAssociation.objects.filter(user=user)
-    upload_count = LogUpload.objects.filter(user=user).count()
-    user_callsign_strs = list(callsigns.values_list("callsign", flat=True))
-
-    matcher_ids = list(
-        Callsign.objects.filter(callsign__in=user_callsign_strs).values_list("id", flat=True)
-    )
-    match_count = (
-        Match.objects.filter(Q(a_call_id__in=matcher_ids) | Q(b_call_id__in=matcher_ids)).count()
-        if matcher_ids
-        else 0
-    )
-
-    # Stats breakdowns from contacts where this user is the "from" station
-    stats = {"by_mode": [], "by_band": [], "by_country": []}
-    if matcher_ids:
-        user_contacts = Contact.objects.filter(from_id__in=matcher_ids)
-
-        mode_counts = (
-            user_contacts.values("mode").annotate(count=Count("id")).order_by("-count")[:15]
-        )
-        stats["by_mode"] = [
-            {"label": MODES.get(row["mode"], f"?{row['mode']}"), "count": row["count"]}
-            for row in mode_counts
-        ]
-
-        band_counts = (
-            user_contacts.values("band").annotate(count=Count("id")).order_by("-count")[:15]
-        )
-        stats["by_band"] = [
-            {"label": BANDS.get(row["band"], f"?{row['band']}"), "count": row["count"]}
-            for row in band_counts
-        ]
-
-        dxcc_counts = (
-            user_contacts.values("dxcc")
-            .annotate(count=Count("id"))
-            .filter(dxcc__gt=0)
-            .order_by("-count")[:15]
-        )
-        stats["by_country"] = [
-            {"label": decode_dxcc(row["dxcc"]), "count": row["count"]} for row in dxcc_counts
-        ]
-
-    return render(
-        request,
-        "app/profile.html",
-        {
-            "upload_count": upload_count,
-            "contact_count": len(user_callsign_strs),
-            "match_count": match_count,
-            "callsigns": callsigns,
-            "stats": stats,
-        },
-    )
+    callsigns = CallsignAssociation.objects.filter(user=request.user)
+    return render(request, "app/profile.html", {"callsigns": callsigns})
 
 
 @login_required()  # ty: ignore[invalid-argument-type]
