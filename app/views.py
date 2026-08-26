@@ -114,10 +114,16 @@ def upload(request):
         initial = {"callsign": replaces.callsign} if replaces else None
         form = LogUploadForm(user=request.user, initial=initial)
     recent_uploads = LogUpload.objects.filter(user=request.user).order_by("-upload_time")[:10]
+    has_callsigns = CallsignAssociation.objects.filter(user=request.user).exists()
     return render(
         request,
         "app/upload.html",
-        {"form": form, "recent_uploads": recent_uploads, "replaces": replaces},
+        {
+            "form": form,
+            "recent_uploads": recent_uploads,
+            "replaces": replaces,
+            "has_callsigns": has_callsigns,
+        },
     )
 
 

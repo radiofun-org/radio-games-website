@@ -412,3 +412,19 @@ def test_500_template_renders_without_context():
     html = render_to_string("500.html")
     assert "Something went wrong" in html
     assert 'href="/"' in html
+
+
+def test_upload_page_without_callsigns_points_to_profile(logged_in):
+    response = logged_in.get("/upload/")
+    assert response.status_code == 200
+    assert b"Add your callsign on your profile" in response.content
+    assert b'href="/profile/"' in response.content
+    assert b'id="submit-btn"' not in response.content
+
+
+def test_upload_page_with_callsign_shows_form(logged_in, user):
+    CallsignAssociation.objects.create(user=user, callsign="N7YHF")
+    response = logged_in.get("/upload/")
+    assert response.status_code == 200
+    assert b'id="submit-btn"' in response.content
+    assert b"Add your callsign on your profile" not in response.content

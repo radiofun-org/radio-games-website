@@ -20,6 +20,12 @@
   </div>
   {% endif %}
 
+  {% if not has_callsigns %}
+  <div class="alert alert-warning">
+    Uploads are tied to a callsign, and your account doesn't have one yet.
+    <a href="{% url 'profile' %}" class="alert-link">Add your callsign on your profile</a> and come back here.
+  </div>
+  {% else %}
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {% if replaces %}<input type="hidden" name="replaces" value="{{ replaces.pk }}">{% endif %}
@@ -52,6 +58,7 @@
 
     <button type="submit" class="btn btn-primary" id="submit-btn">Upload</button>
   </form>
+  {% endif %}
 
   {% if recent_uploads %}
   <h4 class="mt-5 mb-3">Recent uploads</h4>
@@ -95,6 +102,8 @@
   const fileInput = document.getElementById('id_log_file');
   const callsignSelect = document.getElementById('id_callsign');
   const submitBtn = document.getElementById('submit-btn');
+
+  if (!dropZone) return;  // no callsign yet: the form isn't rendered
 
   dropZone.addEventListener('click', () => fileInput.click());
 
