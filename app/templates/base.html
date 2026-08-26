@@ -42,6 +42,10 @@
               <li class="nav-item">
                 <a class="nav-link" href="{% url 'api-docs' %}">API</a>
               </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'about' %}">About</a>
+              </li>
             </ul>
 
             {% if user.is_authenticated %}

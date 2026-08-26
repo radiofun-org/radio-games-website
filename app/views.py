@@ -71,6 +71,10 @@ def how_it_works(request):
     return render(request, "app/how-it-works.html")
 
 
+def about(request):
+    return render(request, "app/about.html")
+
+
 def privacy(request):
     return render(request, "app/privacy.html")
 

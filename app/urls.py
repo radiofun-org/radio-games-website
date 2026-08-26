@@ -10,7 +10,7 @@ from .forms import EmailAuthenticationForm
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("about/", RedirectView.as_view(pattern_name="how-it-works", permanent=True)),
+    path("about/", views.about, name="about"),
     path(
         "accounts/login/",
         auth_views.LoginView.as_view(authentication_form=EmailAuthenticationForm),

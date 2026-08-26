@@ -6,9 +6,9 @@
   <div class="container col-xl-10 col-xxl-9 px-4 py-5">
     <div class="row align-items-center g-lg-5 py-5">
       <div class="col-lg-7 text-center text-lg-start">
-        <h1 class="display-4 fw-bold lh-1 text-body-emphasis mb-3">{% if user.is_authenticated %}Welcome back!{% else %}Join Radio Games!{% endif %}</h1>
+        <h1 class="display-4 fw-bold lh-1 text-body-emphasis mb-3">{% if user.is_authenticated %}Welcome back!{% else %}Confirm your contacts. Chase awards.{% endif %}</h1>
 
-        <p class="col-lg-12 fs-4">The Radio Games Matching Service is a public service for matching contacts, much like LoTW, QRZ, Club Log, and eQSL. In contrast to those services, RGMS is operated as a public good and is <em>completely <a href="https://github.com/radiofun-org/">open source</a></em>.</p>
+        <p class="col-lg-12 fs-4">The Radio Games Matching Service (RGMS) is a contact confirmation and awards service for amateur radio, run as a nonprofit public service. Upload an ADIF file, or let your logger do it, and your contacts are matched against everyone else's. No certificates, no desktop signing tool. Only matched contacts are ever visible, so your log stays private.</p>
       </div>
 
 {% if not user.is_authenticated %}
@@ -90,6 +90,27 @@
         {% endif %}
       </div>
 {% endif %}
+    </div>
+
+    <h2 class="mb-4">Why Radio Games</h2>
+
+    <div class="row row-cols-1 row-cols-md-2 g-4 mb-5">
+      <div class="col">
+        <h3 class="fs-5">Confirmation without the ceremony</h3>
+        <p>Upload a log from the site or the <a href="{% url 'api-docs' %}">API</a>. Matching is deterministic and the <a href="{% url 'how-it-works' %}">rules are published</a>: same band, same mode group, within 30 minutes. There is nothing to install, no certificate to renew, and nothing that stops working when you change computers.</p>
+      </div>
+      <div class="col">
+        <h3 class="fs-5">Awards that show you the whole hobby</h3>
+        <p>Most award programs show progress only toward what you have already started. Radio Games shows progress toward every award, so the awards page doubles as a map of what is left to explore. New operators earn real awards within their first few contacts; experienced operators get tiers that take years. Stranger awards (palindromic callsigns, contiguous grid squares, contact streaks) are planned for when everything else is done.</p>
+      </div>
+      <div class="col">
+        <h3 class="fs-5">Works with your logger</h3>
+        <p>Logging software connects over the API with OAuth2 scoped tokens. Your logger can push contacts and pull confirmations without ever holding your password, and you can revoke its access without changing anything else.</p>
+      </div>
+      <div class="col">
+        <h3 class="fs-5">It can't be taken away</h3>
+        <p>Radio Games is operated by <a href="{% url 'about' %}">Radiofun</a>, a Washington nonprofit, and the entire service is <a href="https://github.com/radiofun-org/">open source</a>: the site, the API, the matching engine, and the award rules. Nobody can sell it or put it behind a subscription. If you don't like a matching rule, the code is there to read and argue with.</p>
+      </div>
     </div>
   </div>
 

@@ -45,7 +45,8 @@ Open-source amateur radio QSO matching service (like LoTW/Club Log but fully ope
 - `/api/` — Ninja API root; `/api/docs` — Swagger UI
 - `/accounts/` — Django auth (login, logout, password change/reset)
 - `/oauth/` — OAuth2 provider endpoints (authorize, token, revoke)
-- `/how-it-works/` — "What is RGMS?" page (intro, matching rules, FAQ); `/about/` and `/faq/` redirect to it permanently
+- `/how-it-works/` — "What is RGMS?" page (intro, matching rules, FAQ); `/faq/` redirects to it permanently
+- `/about/` — who runs it (Radiofun nonprofit, board), why a nonprofit, roadmap
 
 ## API authentication
 
