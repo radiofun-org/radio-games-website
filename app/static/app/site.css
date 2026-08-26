@@ -252,3 +252,8 @@ footer {
   vertical-align: -0.125em;
   margin-inline-start: 0.25em;
 }
+
+/* Award progress bars use the dial-lamp amber rather than Bootstrap's blue. */
+.progress-bar {
+  background-color: var(--rg-amber);
+}
