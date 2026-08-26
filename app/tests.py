@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from django.template.loader import render_to_string
 from django.test import Client
 
 from app.models import AuthUser, CallsignAssociation
@@ -394,3 +395,20 @@ def test_privacy_page(db):
     assert resp.status_code == 200
     assert b"privacy@radio.games" in resp.content
     assert b"Delete account" in resp.content
+
+
+@pytest.mark.django_db()
+def test_404_uses_site_template(settings):
+    settings.DEBUG = False
+    response = Client().get("/no-such-page/")
+    assert response.status_code == 404
+    assert b"There's nothing at this address" in response.content
+    assert b'href="/about/"' in response.content  # base.html nav rendered
+
+
+def test_500_template_renders_without_context():
+    # Django renders 500.html with an empty context, so the template must not
+    # depend on request, user, or any view variable.
+    html = render_to_string("500.html")
+    assert "Something went wrong" in html
+    assert 'href="/"' in html

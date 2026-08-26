@@ -16,6 +16,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       SECRET_KEY: ${SECRET_KEY}
+      SENTRY_DSN: ${SENTRY_DSN}
       MAILGUN_API_KEY: ${MAILGUN_API_KEY}
       ALTCHA_HMAC_KEY: ${ALTCHA_HMAC_KEY}
     expose:
@@ -36,6 +37,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       UPLOAD_DIR: /uploads
+      SENTRY_DSN: ${MATCHER_SENTRY_DSN}
     restart: unless-stopped
     volumes:
       - uploads:/uploads
@@ -49,6 +51,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       SECRET_KEY: ${SECRET_KEY}
+      SENTRY_DSN: ${SENTRY_DSN}
     restart: unless-stopped
 
 volumes:

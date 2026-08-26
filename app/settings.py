@@ -3,12 +3,24 @@ import os
 from pathlib import Path
 
 import dj_database_url
+import sentry_sdk
 
 from env_tools import env_to_bool
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 IS_PRODUCTION = os.getenv("ENV") == "production"
+
+SENTRY_DSN = os.getenv("SENTRY_DSN")
+
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment="production" if IS_PRODUCTION else "development",
+        release=os.getenv("SOURCE_COMMIT"),
+        send_default_pii=False,
+        traces_sample_rate=0.0,
+    )
 
 DEBUG = env_to_bool("DEBUG") and not IS_PRODUCTION
 

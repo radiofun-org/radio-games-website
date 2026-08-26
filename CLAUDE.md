@@ -51,6 +51,7 @@ Deployed by Coolify on `coolify.beaugunderson.com` (Hetzner, `ssh coolify`) from
 - `/oauth/` — OAuth2 provider endpoints (authorize, token, revoke)
 - `/how-it-works/` — "What is RGMS?" page (intro, matching rules, FAQ); `/faq/` redirects to it permanently
 - `/about/` — who runs it (Radiofun nonprofit, board), why a nonprofit, roadmap
+- `app/templates/{403,404,500}.html` — site-styled error pages (Django picks them up by name when `DEBUG` is off; 500 renders with an empty context, so keep it free of view variables)
 
 ## API authentication
 
@@ -93,6 +94,7 @@ pytest + pytest-django. Test settings (`app/test_settings.py`) swap Redis cache 
 
 ## External integrations
 
+- **Sentry** — `sentry-sdk[django]`, initialized in settings only when `SENTRY_DSN` is set (Coolify env; also passed to the matcher and awards worker). Project lives in Beau's personal Sentry org, never canvas-medical.
 - **callook.info** — US callsign metadata lookup (async httpx)
 - **Mailgun** — transactional email via django-anymail
 - **ALTCHA** — captcha on signup form
